@@ -55,11 +55,11 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash(git *)",
         "hooks": [
           {
             "type": "command",
-            "comment": "Auto-installs Tempest pre-commit hooks when Claude enters a Tempest repo",
+            "comment": "Auto-installs Tempest pre-commit hooks before git operations in Tempest repos",
             "command": "bash ~/.claude/skills/tempest-coverage/auto-install-hooks.sh"
           }
         ]

@@ -9,7 +9,7 @@
 # {
 #   "hooks": {
 #     "PreToolUse": [{
-#       "matcher": "Bash",
+#       "matcher": "Bash(git *)",
 #       "hooks": [{
 #         "type": "command",
 #         "command": "~/.claude/skills/tempest-coverage/auto-install-hooks.sh"

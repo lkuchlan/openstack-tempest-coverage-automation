@@ -78,7 +78,7 @@ Add to `.claude/settings.json` (or `~/.claude/settings.json` for global):
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
+        "matcher": "Bash(git *)",
         "hooks": [
           {
             "type": "command",
