@@ -388,11 +388,42 @@ Change-Id: Iabc123...
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
+### Pre-commit Hook Workflow
+
+**If hooks are installed** (user ran `hooks/install-hooks.sh` in their Tempest repo):
+
+When you commit, git will **automatically run** pre-commit hooks that validate:
+- Proper Tempest imports (no requests/urllib)
+- Base class usage (Tempest base classes)
+- Waiter usage (no time.sleep)
+- Cleanup patterns (addCleanup for resources)
+
+**If hook fails:**
+1. **Read the error message** - it tells you exactly what to fix
+2. **Fix the violation** in the code
+3. **Stage the fix:** `git add {file}`
+4. **Retry commit** - hooks will run again
+5. Repeat until hooks pass
+
+**Example:**
+```bash
+git commit -m "Add RBAC tests"
+# Hook output:
+# ❌ Waiter violations in test_rbac.py:
+#    Line 45: Using time.sleep() - Use Tempest waiters
+
+# Fix the code: replace time.sleep() with waiters.wait_for_volume_status()
+git add test_rbac.py
+git commit -m "Add RBAC tests"  # Now passes!
+```
+
 ### Never Skip Hooks
 - **NEVER** use `git commit --no-verify`
 - **NEVER** use `--no-gpg-sign`
 - **NEVER** bypass pre-commit hooks
 - If hook fails, **FIX THE ISSUE** rather than bypassing
+
+**Why:** Hooks are the safety net that catches mistakes in AI-generated code. They ensure production-ready quality.
 
 ---
 
