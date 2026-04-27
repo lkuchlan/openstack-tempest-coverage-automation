@@ -1,0 +1,169 @@
+# Quick Start Guide
+
+Get up and running with OpenStack Tempest Coverage Automation in 5 minutes.
+
+## Prerequisites
+
+- Claude Code installed ([claude.ai/code](https://claude.ai/code))
+- Python 3.8+
+- tox installed
+- Tempest repositories cloned locally
+
+## Installation
+
+```bash
+# 1. Clone repository
+git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+cd openstack-tempest-coverage-automation
+
+# 2. Run setup
+./scripts/setup.sh
+
+# 3. Start Claude Code
+claude
+```
+
+## First Analysis
+
+```bash
+# In Claude Code
+> /jira-coverage-analysis OSPRH-22613
+
+# Or without Jira MCP
+> /jira-coverage-analysis
+
+# Provide ticket details when prompted:
+# - Service: Cinder
+# - Feature: Volume multi-attach
+# - Requirements: Test RBAC scenarios
+```
+
+**Output:** Structured analysis report with:
+- Existing coverage found
+- Gaps identified (HIGH/MEDIUM/LOW)
+- Effort estimates
+- Implementation recommendations
+
+## First Implementation
+
+```bash
+# After reviewing analysis
+> /implement-tempest-tests OSPRH-22613
+
+# Claude will:
+# 1. Find implementation patterns
+# 2. Generate tests
+# 3. Create git branch
+# 4. Run tox validation
+# 5. Commit code
+```
+
+**Result:**
+- Branch: `tempest-coverage-OSPRH-22613`
+- Tests: `cinder_tempest_plugin/api/volume/test_multiattach_rbac.py`
+- Validated: `tox -e pep8,py3` passed
+
+## Review and Push
+
+```bash
+cd ~/automation_projects/cinder-tempest-plugin
+
+# Review changes
+git log -1
+git diff HEAD~1
+
+# Additional validation (optional)
+tox -e pep8,py3
+
+# Push for review
+git push origin tempest-coverage-OSPRH-22613
+git review  # If using Gerrit
+```
+
+## Optional: Jira MCP Setup
+
+Edit `.env`:
+```bash
+JIRA_URL=https://issues.redhat.com
+JIRA_USERNAME=your.email@company.com
+JIRA_API_TOKEN=your-api-token-here
+```
+
+Add to `.claude/settings.json`:
+```json
+{
+  "mcpServers": {
+    "jira": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-jira"],
+      "env": {
+        "JIRA_URL": "${JIRA_URL}",
+        "JIRA_USERNAME": "${JIRA_USERNAME}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+## Optional: Install Pre-commit Hooks
+
+```bash
+cd ~/automation_projects/cinder-tempest-plugin
+/path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
+```
+
+Hooks will enforce Tempest standards on every commit.
+
+## Common Workflows
+
+### Sprint Planning
+```bash
+# Analyze multiple tickets
+> /jira-coverage-analysis OSPRH-1 OSPRH-2 OSPRH-3
+
+# Get combined effort estimate
+# Plan sprint capacity
+```
+
+### Batch Implementation
+```bash
+# Implement tickets in priority order
+> /implement-tempest-tests OSPRH-1
+> /implement-tempest-tests OSPRH-2
+```
+
+## Troubleshooting
+
+**Skills not found?**
+```bash
+# Verify skills installed
+ls -la ~/.claude/skills/
+# Should see: jira-coverage-analysis, implement-tempest-tests, tempest-coverage
+```
+
+**Repository paths wrong?**
+```bash
+vi ~/.claude/skills/tempest-coverage/config.json
+# Update paths to your Tempest repos
+```
+
+**Validation failing?**
+```bash
+# Check tox works
+cd ~/automation_projects/cinder-tempest-plugin
+tox -e pep8
+```
+
+## Next Steps
+
+- Read [INSTALLATION.md](INSTALLATION.md) for detailed setup
+- See [EXAMPLES.md](EXAMPLES.md) for real-world workflows
+- Check [JIRA_SETUP.md](JIRA_SETUP.md) for MCP configuration
+- Review [CLAUDE.md](../CLAUDE.md) for Tempest standards
+
+## Support
+
+- **Documentation:** [README.md](../README.md)
+- **Issues:** [GitHub Issues](https://github.com/your-org/openstack-tempest-coverage-automation/issues)
+- **Help:** Ask in Claude Code: "How do I use the jira-coverage-analysis skill?"

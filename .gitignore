@@ -1,0 +1,153 @@
+# ====================================
+# SECURITY: Credentials and Secrets
+# ====================================
+# CRITICAL: Never commit these files!
+.env.local
+.env.*.local
+*.secret
+*.token
+*.key
+*.pem
+credentials.json
+secrets.yaml
+
+# Claude Code auto-generated files
+.claude/memory/
+.claude/plans/
+.claude/*.log
+.claude/worktrees/
+
+# User-specific configuration
+.claude/settings.local.json
+.claude/skills/*/config.local.json
+*.local.json
+config.local.json
+settings.local.json
+
+# System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# MCP server configuration with credentials
+.mcp.json
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+htmlcov/
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*~
+
+# Git
+*.orig
+*.rej
+.git/
+
+# macOS
+.AppleDouble
+.LSOverride
+
+# Backup files
+*.backup
+*~.nib
+
+# Archives
+*.zip
+*.tar.gz
+*.tar
+*.rar
+
+# OS generated files
+desktop.ini
+$RECYCLE.BIN/
+
+# Package files
+*.dmg
+*.pkg
+*.deb
+*.rpm
+
+# ====================================
+# Project Specific
+# ====================================
+# Test results
+test-results/
+junit/
+
+# Jira MCP cache (may contain sensitive ticket data)
+.jira-cache/
+
+# Node modules (for MCP servers)
+node_modules/
+package-lock.json

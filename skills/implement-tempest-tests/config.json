@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Configuration for Tempest Coverage Skill",
+
+  "default_repo_paths": {
+    "description": "Common locations for Tempest repositories",
+    "tempest": [
+      "~/automation_projects/tempest",
+      "~/PycharmProjects/tempest"
+    ],
+    "plugins": {
+      "cinder-tempest-plugin": [
+        "~/automation_projects/cinder-tempest-plugin",
+        "~/PycharmProjects/cinder-tempest-plugin"
+      ],
+      "manila-tempest-plugin": [
+        "~/automation_projects/manila-tempest-plugin",
+        "~/PycharmProjects/manila-tempest-plugin"
+      ],
+      "glance-tempest-plugin": [
+        "~/automation_projects/glance-tempest-plugin",
+        "~/PycharmProjects/glance-tempest-plugin"
+      ],
+      "barbican-tempest-plugin": [
+        "~/automation_projects/barbican-tempest-plugin",
+        "~/PycharmProjects/barbican-tempest-plugin"
+      ],
+      "keystone-tempest-plugin": [
+        "~/automation_projects/keystone-tempest-plugin",
+        "~/PycharmProjects/keystone-tempest-plugin"
+      ]
+    }
+  },
+
+  "service_to_plugin_mapping": {
+    "description": "Map OpenStack services to their Tempest plugins",
+    "cinder": "cinder-tempest-plugin",
+    "manila": "manila-tempest-plugin",
+    "glance": "glance-tempest-plugin",
+    "barbican": "barbican-tempest-plugin",
+    "keystone": "keystone-tempest-plugin",
+    "nova": "tempest",
+    "neutron": "neutron-tempest-plugin",
+    "swift": "tempest"
+  },
+
+  "tox_environments": {
+    "description": "Common tox environments for validation",
+    "lint": "pep8",
+    "unit_tests": "py3",
+    "integration": "tempest",
+    "coverage": "cover",
+    "compliance": "compliance"
+  },
+
+  "test_attributes": {
+    "description": "Common Tempest test attributes/decorators",
+    "types": [
+      "smoke",
+      "slow",
+      "api",
+      "scenario",
+      "rbac",
+      "negative",
+      "gate"
+    ]
+  },
+
+  "external_resources": {
+    "description": "External documentation and resources",
+    "tempest_hacking_guide": "https://docs.openstack.org/tempest/latest/HACKING.html",
+    "tempest_docs": "https://docs.openstack.org/tempest/latest/",
+    "openstack_specs": "https://specs.openstack.org/",
+    "jira_url": "https://issues.redhat.com"
+  },
+
+  "jira_integration": {
+    "description": "Jira MCP server integration settings",
+    "enabled": true,
+    "use_mcp_if_available": true,
+    "default_jira_url": "https://issues.redhat.com",
+    "ticket_id_patterns": [
+      "RHEL-\\d+",
+      "OSPRH-\\d+",
+      "OSASINFRA-\\d+",
+      "[A-Z]+-\\d+"
+    ],
+    "fields_to_extract": [
+      "summary",
+      "description",
+      "acceptance_criteria",
+      "components",
+      "labels",
+      "status",
+      "assignee",
+      "comments"
+    ],
+    "search_related_tickets": true,
+    "max_related_tickets": 5
+  },
+
+  "git_workflow": {
+    "description": "Git workflow settings",
+    "branch_prefix": "tempest-coverage-",
+    "commit_message_format": "Add Tempest coverage for {feature}\n\nImplements test coverage for {ticket_id}\n{test_list}\n\nCloses-Bug: #{ticket_id}\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+    "default_base_branch": "main",
+    "no_push": true,
+    "no_submit": true
+  },
+
+  "validation_settings": {
+    "description": "Test validation configuration",
+    "run_pep8": true,
+    "run_unit_tests": true,
+    "check_resource_cleanup": true,
+    "verify_parallel_safe": true,
+    "timeout_seconds": 300
+  },
+
+  "base_class_patterns": {
+    "description": "Common base test class patterns per service",
+    "cinder": [
+      "BaseVolumeTest",
+      "BaseVolumeAdminTest",
+      "BaseBackupsTest",
+      "BaseSnapshotsTest"
+    ],
+    "manila": [
+      "BaseSharesTest",
+      "BaseSharesAdminTest",
+      "BaseSharesRbacTest"
+    ],
+    "glance": [
+      "BaseImageTest",
+      "BaseImageAdminTest"
+    ],
+    "generic": [
+      "BaseTestCase",
+      "BaseV2ComputeTest"
+    ]
+  },
+
+  "client_patterns": {
+    "description": "Common client naming patterns",
+    "cinder": [
+      "volumes_client",
+      "volumes_v3_client",
+      "backups_client",
+      "snapshots_client"
+    ],
+    "manila": [
+      "shares_client",
+      "shares_v2_client"
+    ],
+    "glance": [
+      "image_client",
+      "image_client_v2"
+    ]
+  },
+
+  "waiter_patterns": {
+    "description": "Common waiter method patterns",
+    "examples": [
+      "waiters.wait_for_volume_resource_status",
+      "waiters.wait_for_volume_deletion",
+      "waiters.wait_for_share_status",
+      "waiters.wait_for_image_status"
+    ]
+  }
+}

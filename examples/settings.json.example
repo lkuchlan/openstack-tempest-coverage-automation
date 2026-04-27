@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "// Comment": "MCP Server Configuration for Jira Integration",
+  "// Note": "Copy relevant sections to .claude/settings.json in your project",
+
+  "mcpServers": {
+    "jira": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-jira"],
+      "env": {
+        "JIRA_URL": "${JIRA_URL}",
+        "JIRA_USERNAME": "${JIRA_USERNAME}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      }
+    }
+  },
+
+  "// Enable Project MCP Servers": true,
+  "enableAllProjectMcpServers": true,
+
+  "// Enabled MCP Servers": ["jira"],
+  "enabledMcpjsonServers": ["jira"],
+
+  "// Optional: Project Environment Variables": true,
+  "env": {
+    "PROJECT_ROOT": "/path/to/your/tempest/workspace"
+  },
+
+  "// Optional: Auto-allow Read-only Jira Operations": true,
+  "permissions": {
+    "allow": [
+      "mcp__jira__get_issue",
+      "mcp__jira__get_projects",
+      "mcp__jira__get_server_info",
+      "mcp__jira__search_issues",
+      "mcp__jira__get_epic_children",
+      "mcp__jira__get_create_meta",
+      "mcp__jira__get_field_options",
+      "mcp__jira__get_transitions",
+      "mcp__jira__get_users",
+      "mcp__jira__get_test_case",
+      "mcp__jira__get_test_run",
+      "mcp__jira__search_test_cases",
+      "mcp__jira__search_test_runs",
+      "mcp__jira__get_attachment",
+      "mcp__jira__get_current_mcp_version"
+    ]
+  }
+}
