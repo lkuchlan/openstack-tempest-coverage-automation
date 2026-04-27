@@ -11,15 +11,11 @@
 credentials.json
 secrets.yaml
 
-# Claude Code auto-generated files
-.claude/memory/
-.claude/plans/
-.claude/*.log
-.claude/worktrees/
+# Claude Code user installation directory
+# Users create this when running setup.sh - not part of repository
+.claude/
 
 # User-specific configuration
-.claude/settings.local.json
-.claude/skills/*/config.local.json
 *.local.json
 config.local.json
 settings.local.json

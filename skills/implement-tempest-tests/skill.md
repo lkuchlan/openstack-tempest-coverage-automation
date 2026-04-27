@@ -459,7 +459,7 @@ FINAL RECAP
 #### Files Created/Modified:
 
 **File 1:**
-- **Absolute Path:** `/Users/lironkuchlani/automation_projects/{plugin}/{path/to/test_file.py}`
+- **Absolute Path:** `~/automation_projects/{plugin}/{path/to/test_file.py}`
 - **Relative Path:** `{plugin_path}/tests/{path/to/test_file.py}`
 - **Status:** ✅ Created (or ✅ Modified)
 - **Lines Added:** ~{count}
