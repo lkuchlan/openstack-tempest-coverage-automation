@@ -50,15 +50,15 @@ vi ~/.claude/skills/tempest-coverage/config.json
 # Update repository paths:
 {
   "repository_paths": {
-    "tempest": ["~/automation_projects/tempest"],
+    "tempest": ["~/tempest-workspace/tempest"],
     "plugins": {
-      "cinder": "~/automation_projects/cinder-tempest-plugin"
+      "cinder": "~/tempest-workspace/cinder-tempest-plugin"
     }
   }
 }
 
 # Verify paths exist
-ls ~/automation_projects/cinder-tempest-plugin
+ls ~/tempest-workspace/cinder-tempest-plugin
 ```
 
 ### Jira MCP Not Working
@@ -117,7 +117,7 @@ npm --version
 
 **1. Check tox installation:**
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd ~/tempest-workspace/cinder-tempest-plugin
 tox --version
 
 # Install if missing
@@ -185,7 +185,7 @@ git commit --no-verify
 # When prompted, mention specific test files
 
 # 2. Check repository size
-cd ~/automation_projects/cinder-tempest-plugin
+cd ~/tempest-workspace/cinder-tempest-plugin
 find . -name "*.py" | wc -l
 # If > 1000 files, consider optimizing search
 
@@ -213,7 +213,7 @@ ls /path/to/openstack-tempest-coverage-automation/CLAUDE.md
 
 **Solution:**
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd ~/tempest-workspace/cinder-tempest-plugin
 
 # Delete old branch
 git branch -D tempest-coverage-TICKET-123

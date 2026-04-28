@@ -49,10 +49,10 @@ Edit `~/.claude/skills/tempest-coverage/config.json`:
 ```json
 {
   "repository_paths": {
-    "tempest": ["~/automation_projects/tempest"],
+    "tempest": ["~/tempest-workspace/tempest"],
     "plugins": {
-      "cinder": "~/automation_projects/cinder-tempest-plugin",
-      "manila": "~/automation_projects/manila-tempest-plugin"
+      "cinder": "~/tempest-workspace/cinder-tempest-plugin",
+      "manila": "~/tempest-workspace/manila-tempest-plugin"
     }
   }
 }

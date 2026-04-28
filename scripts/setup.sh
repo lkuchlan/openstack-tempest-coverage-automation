@@ -130,8 +130,8 @@ read -p "Configure Tempest repository paths now? (y/N): " -n 1 -r
 echo ""
 
 if [[ $REPLY =~ ^[Yy]$ ]]; then
-    read -p "Path to Tempest repositories (default: ~/automation_projects): " REPO_PATH
-    REPO_PATH=${REPO_PATH:-~/automation_projects}
+    read -p "Path to Tempest repositories (default: ~/tempest-workspace): " REPO_PATH
+    REPO_PATH=${REPO_PATH:-~/tempest-workspace}
 
     # Expand tilde
     REPO_PATH="${REPO_PATH/#\~/$HOME}"
@@ -203,7 +203,7 @@ echo -e "   claude"
 echo -e "   > ${BLUE}/jira-coverage-analysis --help${NC}"
 echo ""
 echo -e "${YELLOW}5. (Optional) Install pre-commit hooks in your Tempest plugin repos:${NC}"
-echo -e "   cd ~/automation_projects/cinder-tempest-plugin"
+echo -e "   cd ~/tempest-workspace/cinder-tempest-plugin"
 echo -e "   $REPO_ROOT/hooks/install-hooks.sh"
 echo ""
 echo -e "${BLUE}📚 Documentation:${NC}"

@@ -66,7 +66,7 @@ claude
 ## Review and Push
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 
 # Review changes
 git log -1
@@ -117,7 +117,7 @@ Add to `.claude/settings.json`:
 ## Optional: Install Pre-commit Hooks
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 /path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
 ```
 
@@ -159,7 +159,7 @@ vi ~/.claude/skills/tempest-coverage/config.json
 **Validation failing?**
 ```bash
 # Check tox works
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 tox -e pep8
 ```
 

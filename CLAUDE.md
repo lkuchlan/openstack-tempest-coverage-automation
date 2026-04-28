@@ -432,8 +432,8 @@ git commit -m "Add RBAC tests"  # Now passes!
 Users typically have:
 
 **Local repositories:**
-- Tempest: `~/automation_projects/tempest`, `~/PycharmProjects/tempest`
-- Plugins: `~/automation_projects/{service}-tempest-plugin`
+- Tempest: `~/tempest-workspace/tempest` (or custom path)
+- Plugins: `~/tempest-workspace/{service}-tempest-plugin`
   - Examples: `cinder-tempest-plugin`, `manila-tempest-plugin`, `glance-tempest-plugin`
 
 **Tools installed:**
@@ -497,7 +497,7 @@ Shared configuration used by both skills:
 
 **Contains:**
 - Service-to-plugin repository mapping (Cinder → cinder-tempest-plugin)
-- Repository paths (default: `~/automation_projects/`)
+- Repository paths (default: `~/tempest-workspace/`)
 - Base class patterns per service
 - Client patterns per service
 - Waiter patterns
@@ -584,7 +584,7 @@ When improving these skills:
 /implement-tempest-tests OSPRH-22613
 
 # Review generated tests, run additional validation
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 tox -e pep8,py3
 
 # Push to remote for review
@@ -624,7 +624,7 @@ git review  # If using Gerrit
 
 **Skills can't find Tempest repositories:**
 - Update paths in `skills/shared/config.json`
-- Verify repositories exist: `ls ~/automation_projects/`
+- Verify repositories exist: `ls $TEMPEST_WORKSPACE/`
 - Skills will note missing repos in reports
 
 **Jira MCP connection fails:**

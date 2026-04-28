@@ -5,7 +5,7 @@
 # Tempest plugin repository's .git/hooks/ directory.
 #
 # Usage:
-#   cd ~/automation_projects/cinder-tempest-plugin
+#   cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 #   /path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
 #
 # Silent mode (no output):
@@ -40,7 +40,7 @@ if [ ! -d "$REPO_ROOT/.git" ]; then
     if [ "$SILENT" = false ]; then
         echo -e "${RED}❌ Not in a git repository${NC}"
         echo -e "${YELLOW}   Run this script from your Tempest plugin repository:${NC}"
-        echo -e "${YELLOW}   cd ~/automation_projects/cinder-tempest-plugin${NC}"
+        echo -e "${YELLOW}   cd $TEMPEST_WORKSPACE/cinder-tempest-plugin${NC}"
         echo -e "${YELLOW}   /path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh${NC}"
     fi
     exit 1

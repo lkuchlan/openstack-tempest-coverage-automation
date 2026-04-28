@@ -139,7 +139,7 @@ Tests Ready for Review & Push
 
 - **`skills/shared/config.json`** - Service mappings, base classes, clients, waiters
 - **Templates** - API test and scenario test patterns
-- **Repository paths** - Default: `~/automation_projects/`
+- **Repository paths** - Customizable, default: `~/tempest-workspace/`
 
 ---
 
@@ -225,11 +225,11 @@ Edit `~/.claude/skills/tempest-coverage/config.json`:
 ```json
 {
   "repository_paths": {
-    "tempest": ["~/automation_projects/tempest", "~/PycharmProjects/tempest"],
+    "tempest": ["~/tempest-workspace/tempest"],
     "plugins": {
-      "cinder": "~/automation_projects/cinder-tempest-plugin",
-      "manila": "~/automation_projects/manila-tempest-plugin",
-      "glance": "~/automation_projects/glance-tempest-plugin"
+      "cinder": "~/tempest-workspace/cinder-tempest-plugin",
+      "manila": "~/tempest-workspace/manila-tempest-plugin",
+      "glance": "~/tempest-workspace/glance-tempest-plugin"
     }
   }
 }
@@ -308,7 +308,7 @@ claude
 # Commit: "Add Tempest coverage for <feature>"
 
 # Step 3: Review and push
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 git log -1  # Review commit
 git diff HEAD~1  # Review changes
 tox -e pep8,py3  # Additional validation
@@ -496,7 +496,7 @@ Enforce OpenStack Tempest coding standards automatically before each commit.
 **In your Tempest plugin repository:**
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 
 # Install hooks
 /path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh

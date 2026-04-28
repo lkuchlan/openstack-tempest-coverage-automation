@@ -41,11 +41,11 @@ For each Tempest plugin repository:
 
 ```bash
 # Cinder
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 ~/openstack-tempest-coverage-automation/hooks/install-hooks.sh
 
 # Manila
-cd ~/automation_projects/manila-tempest-plugin
+cd $TEMPEST_WORKSPACE/manila-tempest-plugin
 ~/openstack-tempest-coverage-automation/hooks/install-hooks.sh
 
 # Repeat for: glance, barbican, keystone, etc.
@@ -203,7 +203,7 @@ git commit --no-verify -m "Emergency fix"
 ### Check if hooks installed:
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 ls -la .git/hooks/pre-commit
 ls -la .git/hooks/checks/
 ```
@@ -244,7 +244,7 @@ rm test_example.py
 If you need to remove hooks:
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 rm .git/hooks/pre-commit
 rm -rf .git/hooks/checks/
 ```

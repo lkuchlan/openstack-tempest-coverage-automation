@@ -83,7 +83,7 @@ vi .claude/skills/tempest-coverage/templates/api_test_template.py
 **4. Test validation**
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 # Ensure generated tests pass
 tox -e pep8,py3
 ```
@@ -116,7 +116,7 @@ python3 hooks/checks/check-waiters.py test_example.py
 **3. Test in real repository**
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 
 # Install hooks
 /path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh

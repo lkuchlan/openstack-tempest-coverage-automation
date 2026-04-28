@@ -75,11 +75,11 @@ This skill is for:
 
 **Search Strategy:**
 ```bash
-# Find Tempest repos
-find ~/automation_projects ~/PycharmProjects -type d -name "*tempest*" -maxdepth 2
+# Find Tempest repos (searches common locations)
+find ~ -type d -name "*tempest*" -maxdepth 3
 
 # Find service plugin
-find ~/automation_projects -type d -name "{service}-tempest-plugin"
+find ~ -type d -name "{service}-tempest-plugin" -maxdepth 3
 ```
 
 **If repo missing:**

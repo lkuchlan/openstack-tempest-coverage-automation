@@ -208,7 +208,7 @@ If you were using pre-release versions:
 
 5. **Reinstall hooks (if using):**
    ```bash
-   cd ~/automation_projects/cinder-tempest-plugin
+   cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
    /path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
    ```
 

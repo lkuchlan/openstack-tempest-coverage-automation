@@ -3,31 +3,25 @@
   "description": "Configuration for Tempest Coverage Skill",
 
   "default_repo_paths": {
-    "description": "Common locations for Tempest repositories",
+    "description": "CUSTOMIZE: Update these paths to your Tempest repositories location",
     "tempest": [
-      "~/automation_projects/tempest",
-      "~/PycharmProjects/tempest"
+      "~/tempest-workspace/tempest"
     ],
     "plugins": {
       "cinder-tempest-plugin": [
-        "~/automation_projects/cinder-tempest-plugin",
-        "~/PycharmProjects/cinder-tempest-plugin"
+        "~/tempest-workspace/cinder-tempest-plugin"
       ],
       "manila-tempest-plugin": [
-        "~/automation_projects/manila-tempest-plugin",
-        "~/PycharmProjects/manila-tempest-plugin"
+        "~/tempest-workspace/manila-tempest-plugin"
       ],
       "glance-tempest-plugin": [
-        "~/automation_projects/glance-tempest-plugin",
-        "~/PycharmProjects/glance-tempest-plugin"
+        "~/tempest-workspace/glance-tempest-plugin"
       ],
       "barbican-tempest-plugin": [
-        "~/automation_projects/barbican-tempest-plugin",
-        "~/PycharmProjects/barbican-tempest-plugin"
+        "~/tempest-workspace/barbican-tempest-plugin"
       ],
       "keystone-tempest-plugin": [
-        "~/automation_projects/keystone-tempest-plugin",
-        "~/PycharmProjects/keystone-tempest-plugin"
+        "~/tempest-workspace/keystone-tempest-plugin"
       ]
     }
   },

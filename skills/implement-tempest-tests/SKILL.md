@@ -86,8 +86,8 @@ Requirements:
 
 **Search Strategy:**
 ```bash
-# Find service plugin
-find ~/automation_projects ~/PycharmProjects -type d -name "{service}-tempest-plugin"
+# Find service plugin (searches common locations)
+find ~ -type d -name "{service}-tempest-plugin" -maxdepth 3
 
 # Verify it exists
 cd {repo_path}
@@ -459,7 +459,7 @@ FINAL RECAP
 #### Files Created/Modified:
 
 **File 1:**
-- **Absolute Path:** `~/automation_projects/{plugin}/{path/to/test_file.py}`
+- **Absolute Path:** `{full-path-to-plugin}/{path/to/test_file.py}`
 - **Relative Path:** `{plugin_path}/tests/{path/to/test_file.py}`
 - **Status:** ✅ Created (or ✅ Modified)
 - **Lines Added:** ~{count}
@@ -494,13 +494,13 @@ FINAL RECAP
 
 **How to locate:**
 ```bash
-cd ~/automation_projects/{plugin}
+cd $TEMPEST_WORKSPACE/{plugin}
 ls -la {path/to/test_file.py}
 ```
 
 **How to run:**
 ```bash
-cd ~/automation_projects/{plugin}
+cd $TEMPEST_WORKSPACE/{plugin}
 tox -e py3 -- {module.path}.{TestClass}
 ```
 
@@ -576,7 +576,7 @@ tox -e py3 -- {module.path}.{TestClass}
 **Immediate Actions:**
 1. Review code changes:
    ```bash
-   cd ~/automation_projects/{plugin}
+   cd $TEMPEST_WORKSPACE/{plugin}
    git diff main
    ```
 

@@ -26,7 +26,7 @@ claude
 # ✅ Branch: tempest-coverage-OSPRH-22613
 
 # Step 3: Review and push
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 git diff HEAD~1
 git push origin tempest-coverage-OSPRH-22613
 ```
@@ -70,7 +70,7 @@ git push origin tempest-coverage-OSPRH-22613
 **Scenario:** Hooks catch violations before commit
 
 ```bash
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 
 # Create test with violation
 cat > test_example.py << 'EOF'

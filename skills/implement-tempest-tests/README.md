@@ -111,7 +111,7 @@ Directory: cinder_tempest_plugin/api/volume/
 File: test_volume_multiattach_rbac.py
 
 How to run:
-cd ~/automation_projects/cinder-tempest-plugin
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 tox -e py3 -- cinder_tempest_plugin.api.volume.test_volume_multiattach_rbac
 
 ### 4. Coverage Results
