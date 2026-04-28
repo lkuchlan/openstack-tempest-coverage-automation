@@ -156,7 +156,7 @@ This release provides a complete workflow for automating Tempest test coverage f
 
 **Installation:**
 ```bash
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 ./scripts/setup.sh
 ```
@@ -226,10 +226,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on:
 
 ## Links
 
-- **Repository:** https://github.com/your-org/openstack-tempest-coverage-automation
-- **Issues:** https://github.com/your-org/openstack-tempest-coverage-automation/issues
-- **Discussions:** https://github.com/your-org/openstack-tempest-coverage-automation/discussions
-- **Releases:** https://github.com/your-org/openstack-tempest-coverage-automation/releases
+- **Repository:** https://github.com/lkuchlan/openstack-tempest-coverage-automation
+- **Issues:** https://github.com/lkuchlan/openstack-tempest-coverage-automation/issues
+- **Discussions:** https://github.com/lkuchlan/openstack-tempest-coverage-automation/discussions
+- **Releases:** https://github.com/lkuchlan/openstack-tempest-coverage-automation/releases
 
 ---
 

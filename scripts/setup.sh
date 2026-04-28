@@ -5,7 +5,7 @@
 # to your ~/.claude/skills/ directory.
 #
 # Usage:
-#   git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+#   git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 #   cd openstack-tempest-coverage-automation
 #   ./scripts/setup.sh
 

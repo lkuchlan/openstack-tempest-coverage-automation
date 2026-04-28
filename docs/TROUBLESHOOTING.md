@@ -270,7 +270,7 @@ git commit --no-verify
    - [CLAUDE.md](../CLAUDE.md) - Standards
 
 2. **Search issues:**
-   - [GitHub Issues](https://github.com/your-org/openstack-tempest-coverage-automation/issues)
+   - [GitHub Issues](https://github.com/lkuchlan/openstack-tempest-coverage-automation/issues)
    - Check for similar problems
 
 3. **Ask Claude:**
@@ -286,7 +286,7 @@ git commit --no-verify
    - Include relevant configuration
 
 5. **Discussions:**
-   - [GitHub Discussions](https://github.com/your-org/openstack-tempest-coverage-automation/discussions)
+   - [GitHub Discussions](https://github.com/lkuchlan/openstack-tempest-coverage-automation/discussions)
    - Ask questions
    - Share tips
 
@@ -326,7 +326,7 @@ rm -rf ~/.claude/skills/tempest-coverage
 # 2. Re-clone repository
 cd ~
 rm -rf openstack-tempest-coverage-automation
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 
 # 3. Re-run setup
 cd openstack-tempest-coverage-automation

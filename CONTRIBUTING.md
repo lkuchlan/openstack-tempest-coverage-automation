@@ -5,8 +5,8 @@ Thank you for your interest in contributing! This guide will help you get starte
 ## Ways to Contribute
 
 ### Report Issues
-- **Bugs:** Found a bug? [Open an issue](https://github.com/your-org/openstack-tempest-coverage-automation/issues)
-- **Feature requests:** Have an idea? Share it in [Discussions](https://github.com/your-org/openstack-tempest-coverage-automation/discussions)
+- **Bugs:** Found a bug? [Open an issue](https://github.com/lkuchlan/openstack-tempest-coverage-automation/issues)
+- **Feature requests:** Have an idea? Share it in [Discussions](https://github.com/lkuchlan/openstack-tempest-coverage-automation/discussions)
 - **Documentation:** Spot a typo or unclear section? PRs welcome!
 
 ### Improve Skills
@@ -402,7 +402,7 @@ openstack-tempest-coverage-automation/
 ## Getting Help
 
 **Questions:**
-- Ask in [GitHub Discussions](https://github.com/your-org/openstack-tempest-coverage-automation/discussions)
+- Ask in [GitHub Discussions](https://github.com/lkuchlan/openstack-tempest-coverage-automation/discussions)
 - Tag maintainers in issues
 
 **Documentation:**

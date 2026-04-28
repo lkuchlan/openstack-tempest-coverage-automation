@@ -13,7 +13,7 @@ Get up and running with OpenStack Tempest Coverage Automation in 5 minutes.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 
 # 2. Run setup
@@ -173,5 +173,5 @@ tox -e pep8
 ## Support
 
 - **Documentation:** [README.md](../README.md)
-- **Issues:** [GitHub Issues](https://github.com/your-org/openstack-tempest-coverage-automation/issues)
+- **Issues:** [GitHub Issues](https://github.com/lkuchlan/openstack-tempest-coverage-automation/issues)
 - **Help:** Ask in Claude Code: "How do I use the jira-coverage-analysis skill?"

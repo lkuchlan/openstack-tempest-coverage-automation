@@ -66,7 +66,7 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 
 # 2. Run one-command setup
@@ -156,7 +156,7 @@ Tests Ready for Review & Push
 ### Method 1: Git Clone + Setup Script (Recommended)
 
 ```bash
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 ./scripts/setup.sh
 ```
@@ -172,7 +172,7 @@ cd openstack-tempest-coverage-automation
 ### Method 2: Direct Download (Air-gapped)
 
 ```bash
-curl -L https://github.com/your-org/openstack-tempest-coverage-automation/archive/refs/tags/v1.0.0.tar.gz | tar xz
+curl -L https://github.com/lkuchlan/openstack-tempest-coverage-automation/archive/refs/tags/v1.0.0.tar.gz | tar xz
 cd openstack-tempest-coverage-automation-1.0.0
 ./scripts/setup.sh
 ```
@@ -181,7 +181,7 @@ cd openstack-tempest-coverage-automation-1.0.0
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 
 # Create skills directory
@@ -587,7 +587,7 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 **Development setup:**
 ```bash
-git clone https://github.com/your-org/openstack-tempest-coverage-automation.git
+git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 
 # Test on real Tempest repositories
@@ -621,8 +621,8 @@ OpenStack standard license for compatibility with upstream Tempest.
 
 ## 📬 Support
 
-**Issues:** [GitHub Issues](https://github.com/your-org/openstack-tempest-coverage-automation/issues)  
-**Discussions:** [GitHub Discussions](https://github.com/your-org/openstack-tempest-coverage-automation/discussions)  
+**Issues:** [GitHub Issues](https://github.com/lkuchlan/openstack-tempest-coverage-automation/issues)  
+**Discussions:** [GitHub Discussions](https://github.com/lkuchlan/openstack-tempest-coverage-automation/discussions)  
 **Documentation:** [docs/](docs/)  
 
 ---
