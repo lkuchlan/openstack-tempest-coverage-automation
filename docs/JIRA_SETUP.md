@@ -10,7 +10,7 @@ You can use both skills **without Jira MCP** - just provide ticket details manua
 
 - Jira account with API access
 - Access to Jira instance (Cloud or Data Center)
-- npm installed (for MCP server)
+- uv installed (for MCP server)
 
 ## Generate API Token
 
@@ -55,6 +55,23 @@ git status
 # .env should NOT appear
 ```
 
+## Install uv
+
+**macOS:**
+```bash
+brew install uv
+```
+
+**Linux/Windows:**
+```bash
+pip install uv
+```
+
+**Verify:**
+```bash
+uv --version
+```
+
 ## Configure MCP Server
 
 **Method 1: Project settings (recommended)**
@@ -63,13 +80,15 @@ Edit `.claude/settings.json`:
 ```json
 {
   "mcpServers": {
-    "jira": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-jira"],
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
       "env": {
         "JIRA_URL": "${JIRA_URL}",
         "JIRA_USERNAME": "${JIRA_USERNAME}",
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "JIRA_SSL_VERIFY": "true",
+        "READ_ONLY_MODE": "true"
       }
     }
   },
@@ -103,8 +122,8 @@ claude
 ## Troubleshooting
 
 **MCP server not starting:**
-- Check npm is installed: `npm --version`
-- Try manual installation: `npm install -g @modelcontextprotocol/server-jira`
+- Check uv is installed: `uv --version`
+- Try manual installation: `uvx mcp-atlassian --version`
 
 **Authentication failing:**
 - Verify credentials in .env

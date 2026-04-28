@@ -5,13 +5,15 @@
   "// Note": "Copy relevant sections to .claude/settings.json in your project",
 
   "mcpServers": {
-    "jira": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-jira"],
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
       "env": {
         "JIRA_URL": "${JIRA_URL}",
         "JIRA_USERNAME": "${JIRA_USERNAME}",
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "JIRA_SSL_VERIFY": "true",
+        "READ_ONLY_MODE": "true"
       }
     }
   },
@@ -19,8 +21,8 @@
   "// Enable Project MCP Servers": true,
   "enableAllProjectMcpServers": true,
 
-  "// Enabled MCP Servers": ["jira"],
-  "enabledMcpjsonServers": ["jira"],
+  "// Enabled MCP Servers": ["mcp-atlassian"],
+  "enabledMcpjsonServers": ["mcp-atlassian"],
 
   "// Optional: Project Environment Variables": true,
   "env": {

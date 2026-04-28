@@ -82,6 +82,12 @@ git review  # If using Gerrit
 
 ## Optional: Jira MCP Setup
 
+Install `uv`:
+```bash
+brew install uv    # macOS
+pip install uv     # or via pip
+```
+
 Edit `.env`:
 ```bash
 JIRA_URL=https://issues.redhat.com
@@ -93,13 +99,15 @@ Add to `.claude/settings.json`:
 ```json
 {
   "mcpServers": {
-    "jira": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-jira"],
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
       "env": {
         "JIRA_URL": "${JIRA_URL}",
         "JIRA_USERNAME": "${JIRA_USERNAME}",
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "JIRA_SSL_VERIFY": "true",
+        "READ_ONLY_MODE": "true"
       }
     }
   }

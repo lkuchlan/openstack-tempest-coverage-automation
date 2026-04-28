@@ -265,191 +265,70 @@ Provide actionable recommendations for implementation.
 
 ### STEP 7: Generate Analysis Report (MANDATORY)
 
-**CRITICAL: Every execution MUST produce a structured analysis report.**
+**CRITICAL: Every execution MUST produce a concise analysis report.**
 
 **Report Format:**
 
 ```markdown
-# Coverage Analysis Report: {TICKET-ID}
+# Coverage Analysis: {TICKET-ID}
 
-## Executive Summary
-- **Ticket:** {TICKET-ID}
-- **Service:** {Service Name}
-- **Feature:** {Feature/API Description}
-- **Coverage Status:** ✅ Complete / ⚠️ Partial / ❌ Missing
-- **Priority:** HIGH / MEDIUM / LOW
-- **Estimated Effort:** {X-Y hours}
+**Ticket:** {TICKET-ID} - {Summary}
+**Service:** {Service} | **Feature:** {Feature description}
 
 ---
 
-## Ticket Requirements
+## 1. Coverage Status
 
-### Summary
-{Ticket summary}
-
-### Service & API
-- **Service:** {e.g., Cinder}
-- **API/Operation:** {e.g., Volume multi-attach}
-- **Endpoint:** {e.g., POST /volumes/{id}/action}
-
-### Acceptance Criteria
-1. {Criterion 1}
-2. {Criterion 2}
-3. {Criterion 3}
+{Choose one:}
+✅ **COMPLETE** - Tests already exist
+⚠️ **PARTIAL** - Some coverage exists, gaps identified  
+❌ **MISSING** - No tests found
 
 ---
 
-## Existing Coverage
+## 2. Existing Tests (if coverage exists)
 
-### Repository
-- **Location:** {path to repo or "NOT FOUND"}
-- **Plugin:** {plugin name}
+**Repository:** `{service}-tempest-plugin` (in your configured Tempest path)
 
-### Existing Tests Found
+**File:** `{plugin}/tests/{path}/test_{feature}.py`
 
-**File 1:** `{relative/path/to/test_file.py}`
-- **Class:** `TestClassName`
-- **Methods:**
-  - `test_method_1()` - Tests: {what it tests}
-  - `test_method_2()` - Tests: {what it tests}
+**Tests found:**
+- `test_{scenario_1}()` - {Brief what it tests}
+- `test_{scenario_2}()` - {Brief what it tests}
+- `test_{scenario_3}()` - {Brief what it tests}
 
-**Coverage Scope:**
-- ✅ Basic create/delete operations
-- ✅ Positive scenarios
-- ❌ RBAC tests MISSING
-- ❌ Negative tests MISSING
-
-### Quality Assessment
-- ✅ Uses proper base class: BaseVolumeTest
-- ✅ Uses Tempest clients
-- ✅ Uses waiters (no sleep)
-- ✅ Has proper cleanup
-- ✅ Tests are independent
+**Covers:** {One-line summary - e.g., "Basic CRUD, positive flows, concurrent operations"}
 
 ---
 
-## Coverage Gaps Identified
+## 3. Implementation Plan (if gaps exist)
 
-### Gap 1: RBAC Tests for Multi-Attach
-- **Priority:** HIGH
-- **Scenarios Missing:**
-  1. Admin role can multi-attach volumes
-  2. Member role can multi-attach own volumes
-  3. Reader role cannot multi-attach (negative test)
-- **Estimated Effort:** 4 hours
-- **Complexity:** Medium (RBAC pattern exists, need to adapt)
+**Gaps identified:** {Number} tests needed
 
-### Gap 2: Negative Test for Invalid States
-- **Priority:** MEDIUM
-- **Scenarios Missing:**
-  1. Cannot multi-attach volume in 'error' state
-  2. Cannot multi-attach volume being deleted
-- **Estimated Effort:** 2 hours
-- **Complexity:** Low (simple negative tests)
-
-### Gap 3: Edge Cases
-- **Priority:** LOW
-- **Scenarios Missing:**
-  1. Multi-attach with maximum attachments
-  2. Multi-attach with bootable volumes
-- **Estimated Effort:** 3 hours
-- **Complexity:** Medium
-
-**Total Gaps:** 3
-**Total Estimated Effort:** 9 hours
+**I plan to write:**
+- {N} tests for {feature/scenario} - Priority: HIGH
+- {N} tests for {feature/scenario} - Priority: MEDIUM
+- {N} tests for {feature/scenario} - Priority: LOW
 
 ---
 
-## Implementation Recommendations
+## 4. Implementation Location
 
-### Priority Order
-1. **First:** Gap 1 (RBAC tests) - HIGH priority, security-critical
-2. **Second:** Gap 2 (Negative tests) - MEDIUM priority, error handling
-3. **Third:** Gap 3 (Edge cases) - LOW priority, nice-to-have
+**Repository:** `{service}-tempest-plugin`
 
-### Suggested Approach
+**Directory:** `{plugin}/tests/{api|scenario}/{subdir}/`
 
-**For Gap 1 (RBAC Tests):**
-- **File:** `cinder_tempest_plugin/api/volume/test_volume_multiattach_rbac.py` (new)
-- **Base Class:** `BaseVolumeTest` or `BaseVolumeRbacTest`
-- **Reference Test:** `test_volume_attach_rbac.py` (copy pattern)
-- **Clients:** `volumes_client`, `servers_client`
-- **Pattern:**
-  ```python
-  class VolumeMultiAttachRbacTest(BaseVolumeTest):
-      credentials = ['admin', 'primary', 'alt']
-      
-      def test_multiattach_admin_authorized(self):
-          # Create volume, attach multiple times as admin
-          pass
-  ```
+**File(s):**
+- **New:** `test_{feature}_{type}.py` (will create)
+- **Modify:** `test_{existing}.py` (will add to existing)
 
-**For Gap 2 (Negative Tests):**
-- **File:** `cinder_tempest_plugin/api/volume/test_volume_multiattach_negative.py` (new)
-- **Base Class:** `BaseVolumeTest`
-- **Pattern:** Use `self.assertRaises(lib_exc.BadRequest, ...)`
-
-**For Gap 3 (Edge Cases):**
-- **File:** Add to existing `test_volume_multiattach.py` or create new
-- **Base Class:** `BaseVolumeTest`
+**Base class:** `Base{Service}Test`
+**Clients:** `{service}_client`, `{other}_client`
 
 ---
 
-## Blockers & Risks
-
-### Blockers
-- None identified
-
-### Risks
-- Multi-attach feature must be enabled in cloud (check tempest.conf)
-- RBAC policies may differ from standard (tests may need adjustment)
-
-### Assumptions
-- BaseVolumeTest provides necessary fixtures
-- Standard Cinder API is available
-- Test accounts have proper RBAC roles configured
-
----
-
-## Next Steps
-
-### For Implementation
-1. **Review this analysis**
-2. **Approve priority and scope**
-3. **Use `implement-tempest-tests` skill:**
-   ```
-   /implement-tempest-tests RHEL-12345
-   ```
-
-### For Sprint Planning
-- **Story Points:** ~5 (based on 9 hours effort)
-- **Recommended Sprint:** Current or next
-- **Dependencies:** None
-- **Assignee:** TBD
-
----
-
-## Reference Information
-
-### Related Tickets
-{List of related Jira tickets if found}
-
-### Upstream References
-- Tempest HACKING: https://docs.openstack.org/tempest/latest/HACKING.html
-- Cinder API: https://docs.openstack.org/api-ref/block-storage/
-
-### Pattern Examples
-- Reference test: `cinder_tempest_plugin/api/volume/test_volumes_actions.py`
-- RBAC pattern: `cinder_tempest_plugin/api/volume/test_volume_rbac.py`
-
----
-
-## Analysis Metadata
-
-- **Analysis Date:** {DATE}
-- **Analyzed By:** Claude Sonnet 4.5 (jira-coverage-analysis skill)
-- **Repository Status:** {Found/Not Found}
-- **Confidence Level:** {High/Medium/Low}
+**Next step:** {If gaps} Use `/implement-tempest-tests {TICKET-ID}` to generate tests
+              {If complete} No action needed - coverage is complete
 
 END OF ANALYSIS REPORT
 ```

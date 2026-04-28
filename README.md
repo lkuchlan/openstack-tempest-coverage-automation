@@ -251,18 +251,26 @@ JIRA_API_TOKEN=your-api-token-here
 
 **3. MCP Server (if using Jira integration)**
 
+Install `uv`:
+```bash
+brew install uv    # macOS
+pip install uv     # or via pip
+```
+
 Add to `.claude/settings.json`:
 
 ```json
 {
   "mcpServers": {
-    "jira": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-jira"],
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
       "env": {
         "JIRA_URL": "${JIRA_URL}",
         "JIRA_USERNAME": "${JIRA_USERNAME}",
-        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "JIRA_SSL_VERIFY": "true",
+        "READ_ONLY_MODE": "true"
       }
     }
   },
