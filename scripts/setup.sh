@@ -253,7 +253,110 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
                 echo ""
 
                 if [[ $MERGE_CHOICE == "1" ]]; then
-                    # Merge configuration using Python
+                    # Check if mcp-atlassian already exists
+                    EXISTING_MCP_CHECK=$(python3 << 'PYTHON_EOF'
+import json
+import sys
+import os
+
+settings_file = os.environ.get('SETTINGS_FILE')
+
+try:
+    with open(settings_file, 'r') as f:
+        existing = json.load(f)
+
+    # Check if mcp-atlassian exists
+    if 'mcpServers' in existing and 'mcp-atlassian' in existing['mcpServers']:
+        print("EXISTS")
+        print(json.dumps(existing['mcpServers']['mcp-atlassian'], indent=2))
+        sys.exit(0)
+    else:
+        print("NOT_EXISTS")
+        sys.exit(0)
+except Exception as e:
+    print("ERROR")
+    sys.exit(1)
+PYTHON_EOF
+)
+
+                    if echo "$EXISTING_MCP_CHECK" | grep -q "^EXISTS"; then
+                        echo ""
+                        echo -e "${YELLOW}⚠️  mcp-atlassian is already configured!${NC}"
+                        echo ""
+                        echo -e "${BLUE}Current mcp-atlassian configuration:${NC}"
+                        echo "$EXISTING_MCP_CHECK" | tail -n +2
+                        echo ""
+                        echo -e "Options:"
+                        echo -e "  ${YELLOW}1)${NC} Keep existing - Don't change mcp-atlassian (recommended)"
+                        echo -e "  ${YELLOW}2)${NC} Replace - Overwrite with new config"
+                        echo -e "  ${YELLOW}3)${NC} Skip all - Don't modify settings.json"
+                        echo ""
+
+                        while true; do
+                            read -p "Choose (1/2/3): " -n 1 -r REPLACE_CHOICE
+                            echo ""
+
+                            if [[ $REPLACE_CHOICE == "1" ]]; then
+                                echo -e "${GREEN}✓${NC} Keeping existing mcp-atlassian configuration"
+                                echo -e "${GREEN}✓${NC} Adding missing permissions if needed"
+
+                                # Only add permissions, don't touch mcp-atlassian config
+                                python3 << 'PYTHON_EOF'
+import json
+import os
+
+settings_file = os.environ.get('SETTINGS_FILE')
+
+with open(settings_file, 'r') as f:
+    existing = json.load(f)
+
+new_permissions = [
+    "mcp__mcp-atlassian__get_issue",
+    "mcp__mcp-atlassian__search_issues",
+    "mcp__mcp-atlassian__get_epic_children"
+]
+
+# Merge permissions only
+if 'permissions' not in existing:
+    existing['permissions'] = {}
+if 'allow' not in existing['permissions']:
+    existing['permissions']['allow'] = []
+
+added = []
+for perm in new_permissions:
+    if perm not in existing['permissions']['allow']:
+        existing['permissions']['allow'].append(perm)
+        added.append(perm)
+
+with open(settings_file, 'w') as f:
+    json.dump(existing, f, indent=2)
+
+if added:
+    print(f"Added {len(added)} new permissions")
+else:
+    print("All permissions already present")
+PYTHON_EOF
+                                break
+                            elif [[ $REPLACE_CHOICE == "2" ]]; then
+                                echo -e "${YELLOW}Replacing existing mcp-atlassian configuration...${NC}"
+                                # Continue with merge below
+                                break
+                            elif [[ $REPLACE_CHOICE == "3" ]]; then
+                                echo -e "${YELLOW}Skipping Jira MCP configuration${NC}"
+                                MCP_CONFIG=""
+                                break 2  # Break out of both loops
+                            else
+                                echo -e "${RED}Invalid choice. Please enter 1, 2, or 3.${NC}"
+                            fi
+                        done
+
+                        # If user chose "Keep existing" (option 1), skip the merge
+                        if [[ $REPLACE_CHOICE == "1" ]]; then
+                            break
+                        fi
+                    fi
+
+                    # Merge configuration using Python (only runs if NOT keeping existing)
                     python3 << 'PYTHON_EOF'
 import json
 import sys
