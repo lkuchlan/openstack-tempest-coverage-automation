@@ -147,6 +147,210 @@ fi
 
 echo ""
 
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Jira MCP Integration Setup
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+echo -e "${BLUE}🔌 Jira MCP Integration Setup${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "${YELLOW}Note: Skills work without Jira MCP (manual input mode)${NC}"
+echo ""
+
+read -p "Set up Jira MCP server for automatic ticket fetching? (y/N): " -n 1 -r
+echo ""
+echo ""
+
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    # Check if uv is installed
+    if ! command -v uv &> /dev/null; then
+        echo -e "${RED}❌ uv is not installed (required for Jira MCP)${NC}"
+        echo ""
+        echo -e "${YELLOW}Install uv first:${NC}"
+        echo -e "${YELLOW}  macOS:   brew install uv${NC}"
+        echo -e "${YELLOW}  Linux:   pip install uv${NC}"
+        echo ""
+        echo -e "${YELLOW}After installing uv, re-run setup:${NC}"
+        echo -e "${YELLOW}  ./scripts/setup.sh${NC}"
+        echo ""
+        read -p "Continue setup without Jira MCP? (y/N): " -n 1 -r
+        echo ""
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}✓${NC} uv is installed"
+        echo ""
+
+        # Ask where to save configuration
+        echo -e "${BLUE}📍 Where should the MCP configuration be saved?${NC}"
+        echo ""
+        echo -e "  ${YELLOW}1)${NC} Global   - ~/.claude/settings.json"
+        echo -e "     Works for all projects, recommended for personal use"
+        echo ""
+        echo -e "  ${YELLOW}2)${NC} Project  - $REPO_ROOT/.claude/settings.json"
+        echo -e "     Only for this project, recommended for team shared config"
+        echo ""
+
+        while true; do
+            read -p "Choose (1 or 2): " -n 1 -r CHOICE
+            echo ""
+
+            if [[ $CHOICE == "1" ]]; then
+                SETTINGS_FILE="$HOME/.claude/settings.json"
+                SETTINGS_SCOPE="global"
+                break
+            elif [[ $CHOICE == "2" ]]; then
+                SETTINGS_FILE="$REPO_ROOT/.claude/settings.json"
+                SETTINGS_SCOPE="project"
+                mkdir -p "$REPO_ROOT/.claude"
+                break
+            else
+                echo -e "${RED}Invalid choice. Please enter 1 or 2.${NC}"
+            fi
+        done
+
+        echo ""
+        echo -e "${BLUE}Configuring MCP server...${NC}"
+
+        # Create MCP configuration JSON
+        MCP_CONFIG='{
+  "mcpServers": {
+    "mcp-atlassian": {
+      "command": "uvx",
+      "args": ["mcp-atlassian"],
+      "env": {
+        "JIRA_URL": "${JIRA_URL}",
+        "JIRA_USERNAME": "${JIRA_USERNAME}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "JIRA_SSL_VERIFY": "true",
+        "READ_ONLY_MODE": "true"
+      }
+    }
+  },
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "mcp__mcp-atlassian__get_issue",
+      "mcp__mcp-atlassian__search_issues",
+      "mcp__mcp-atlassian__get_epic_children"
+    ]
+  }
+}'
+
+        # Check if settings file exists
+        if [ -f "$SETTINGS_FILE" ]; then
+            echo -e "${YELLOW}⚠️  Settings file already exists: $SETTINGS_FILE${NC}"
+            echo ""
+            echo -e "Options:"
+            echo -e "  ${YELLOW}1)${NC} Merge - Add mcp-atlassian to existing config (recommended)"
+            echo -e "  ${YELLOW}2)${NC} Skip  - Keep existing config unchanged"
+            echo -e "  ${YELLOW}3)${NC} View  - Show current config"
+            echo ""
+
+            while true; do
+                read -p "Choose (1/2/3): " -n 1 -r MERGE_CHOICE
+                echo ""
+
+                if [[ $MERGE_CHOICE == "1" ]]; then
+                    # Merge configuration using Python
+                    python3 << 'PYTHON_EOF'
+import json
+import sys
+import os
+
+settings_file = os.environ.get('SETTINGS_FILE')
+
+# Read existing config
+try:
+    with open(settings_file, 'r') as f:
+        existing = json.load(f)
+except:
+    existing = {}
+
+# New MCP config
+new_mcp = {
+    "mcp-atlassian": {
+        "command": "uvx",
+        "args": ["mcp-atlassian"],
+        "env": {
+            "JIRA_URL": "${JIRA_URL}",
+            "JIRA_USERNAME": "${JIRA_USERNAME}",
+            "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+            "JIRA_SSL_VERIFY": "true",
+            "READ_ONLY_MODE": "true"
+        }
+    }
+}
+
+new_permissions = [
+    "mcp__mcp-atlassian__get_issue",
+    "mcp__mcp-atlassian__search_issues",
+    "mcp__mcp-atlassian__get_epic_children"
+]
+
+# Merge mcpServers
+if 'mcpServers' not in existing:
+    existing['mcpServers'] = {}
+existing['mcpServers']['mcp-atlassian'] = new_mcp['mcp-atlassian']
+
+# Set enableAllProjectMcpServers
+existing['enableAllProjectMcpServers'] = True
+
+# Merge permissions
+if 'permissions' not in existing:
+    existing['permissions'] = {}
+if 'allow' not in existing['permissions']:
+    existing['permissions']['allow'] = []
+
+# Add new permissions if not already present
+for perm in new_permissions:
+    if perm not in existing['permissions']['allow']:
+        existing['permissions']['allow'].append(perm)
+
+# Write merged config
+with open(settings_file, 'w') as f:
+    json.dump(existing, f, indent=2)
+
+print("✓ Merged mcp-atlassian configuration")
+PYTHON_EOF
+                    echo -e "${GREEN}✓${NC} Preserved existing MCP servers and settings"
+                    break
+                elif [[ $MERGE_CHOICE == "2" ]]; then
+                    echo -e "${YELLOW}Skipping Jira MCP configuration${NC}"
+                    MCP_CONFIG=""
+                    break
+                elif [[ $MERGE_CHOICE == "3" ]]; then
+                    echo ""
+                    echo -e "${BLUE}Current configuration:${NC}"
+                    cat "$SETTINGS_FILE"
+                    echo ""
+                else
+                    echo -e "${RED}Invalid choice. Please enter 1, 2, or 3.${NC}"
+                fi
+            done
+        else
+            # Create new settings file
+            echo "$MCP_CONFIG" > "$SETTINGS_FILE"
+            echo -e "${GREEN}✓${NC} Created $SETTINGS_FILE"
+            echo -e "${GREEN}✓${NC} Added mcp-atlassian server configuration"
+            echo -e "${GREEN}✓${NC} Added Jira permissions (3 tools)"
+        fi
+
+        if [ -n "$MCP_CONFIG" ]; then
+            echo ""
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "${GREEN}✅ Jira MCP configuration complete!${NC}"
+            echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo ""
+            echo -e "${BLUE}Configuration saved to:${NC} $SETTINGS_FILE"
+            echo -e "${BLUE}Scope:${NC} $SETTINGS_SCOPE"
+        fi
+    fi
+fi
+
+echo ""
+
 # Validation
 echo -e "${BLUE}🔍 Validating installation...${NC}"
 
@@ -189,27 +393,59 @@ echo ""
 echo -e "${BLUE}📋 Next Steps:${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo -e "${YELLOW}1. Edit .env with your Jira credentials (if using Jira MCP):${NC}"
-echo -e "   vi $REPO_ROOT/.env"
-echo ""
-echo -e "${YELLOW}2. (Optional) Update repository paths in shared config:${NC}"
-echo -e "   vi $SKILLS_DIR/tempest-coverage/config.json"
-echo ""
-echo -e "${YELLOW}3. (Optional) Set up Jira MCP server:${NC}"
-echo -e "   See: docs/JIRA_SETUP.md"
-echo ""
-echo -e "${YELLOW}4. Test the skills:${NC}"
-echo -e "   claude"
-echo -e "   > ${BLUE}/jira-coverage-analysis --help${NC}"
-echo ""
-echo -e "${YELLOW}5. (Optional) Install pre-commit hooks in your Tempest plugin repos:${NC}"
-echo -e "   cd ~/tempest-workspace/cinder-tempest-plugin"
-echo -e "   $REPO_ROOT/hooks/install-hooks.sh"
-echo ""
+
+# Show Jira-specific next steps if MCP was configured
+if [[ $REPLY =~ ^[Yy]$ ]] && command -v uv &> /dev/null && [ -n "$MCP_CONFIG" ]; then
+    echo -e "${YELLOW}1. Edit .env with your Jira credentials:${NC}"
+    echo -e "   vi $REPO_ROOT/.env"
+    echo ""
+    echo -e "   ${BLUE}Required credentials:${NC}"
+    echo -e "   JIRA_URL=https://your-jira.com"
+    echo -e "   JIRA_USERNAME=your.email@company.com"
+    echo -e "   JIRA_API_TOKEN=your-token-here"
+    echo ""
+    echo -e "   ${BLUE}📚 Generate API token:${NC}"
+    echo -e "   https://id.atlassian.com/manage-profile/security/api-tokens"
+    echo ""
+    echo -e "${YELLOW}2. Test the Jira MCP connection:${NC}"
+    echo -e "   claude"
+    echo -e "   > ${BLUE}/jira-coverage-analysis OSPRH-22613${NC}"
+    echo ""
+    echo -e "   ${GREEN}✓ Success:${NC} Fetches ticket automatically (no prompts)"
+    echo -e "   ${RED}✗ Failed:${NC}  Prompts for ticket details"
+    echo ""
+    echo -e "${YELLOW}3. (Optional) Update repository paths in shared config:${NC}"
+    echo -e "   vi $SKILLS_DIR/tempest-coverage/config.json"
+    echo ""
+    echo -e "${YELLOW}4. (Optional) Install pre-commit hooks in your Tempest plugin repos:${NC}"
+    echo -e "   cd \$TEMPEST_WORKSPACE/cinder-tempest-plugin"
+    echo -e "   $REPO_ROOT/hooks/install-hooks.sh"
+    echo ""
+else
+    echo -e "${YELLOW}1. (Optional) Edit .env with your Jira credentials:${NC}"
+    echo -e "   vi $REPO_ROOT/.env"
+    echo ""
+    echo -e "${YELLOW}2. (Optional) Update repository paths in shared config:${NC}"
+    echo -e "   vi $SKILLS_DIR/tempest-coverage/config.json"
+    echo ""
+    echo -e "${YELLOW}3. (Optional) Set up Jira MCP server:${NC}"
+    echo -e "   Re-run: ./scripts/setup.sh"
+    echo -e "   Or see: docs/JIRA_SETUP.md"
+    echo ""
+    echo -e "${YELLOW}4. Test the skills:${NC}"
+    echo -e "   claude"
+    echo -e "   > ${BLUE}/jira-coverage-analysis --help${NC}"
+    echo ""
+    echo -e "${YELLOW}5. (Optional) Install pre-commit hooks in your Tempest plugin repos:${NC}"
+    echo -e "   cd \$TEMPEST_WORKSPACE/cinder-tempest-plugin"
+    echo -e "   $REPO_ROOT/hooks/install-hooks.sh"
+    echo ""
+fi
+
 echo -e "${BLUE}📚 Documentation:${NC}"
-echo -e "   README.md        - Main documentation"
+echo -e "   README.md          - Main documentation"
 echo -e "   docs/QUICKSTART.md - 5-minute guide"
-echo -e "   CLAUDE.md        - OpenStack Tempest standards"
+echo -e "   CLAUDE.md          - OpenStack Tempest standards"
 echo ""
 echo -e "${BLUE}🎯 Quick Start Example:${NC}"
 echo -e "   claude"
