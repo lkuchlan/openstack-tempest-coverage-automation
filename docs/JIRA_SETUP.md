@@ -95,9 +95,9 @@ Edit `.claude/settings.json`:
   "enableAllProjectMcpServers": true,
   "permissions": {
     "allow": [
-      "mcp__jira__get_issue",
-      "mcp__jira__search_issues",
-      "mcp__jira__get_epic_children"
+      "mcp__mcp-atlassian__get_issue",
+      "mcp__mcp-atlassian__search_issues",
+      "mcp__mcp-atlassian__get_epic_children"
     ]
   }
 }
