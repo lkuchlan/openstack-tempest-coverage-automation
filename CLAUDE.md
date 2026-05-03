@@ -6,9 +6,10 @@ This repository provides Claude Code skills for automating OpenStack Tempest tes
 
 When working in this repository, you are helping users:
 1. Analyze Jira tickets for test coverage gaps
-2. Implement Tempest tests following OpenStack standards
-3. Validate tests meet upstream quality requirements
-4. Maintain consistency with Tempest HACKING guidelines
+2. Post test plans to Jira for stakeholder approval
+3. Implement Tempest tests following OpenStack standards
+4. Validate tests meet upstream quality requirements
+5. Maintain consistency with Tempest HACKING guidelines
 
 **Target users:** OpenStack QE engineers automating test coverage for Tempest plugins (Cinder, Manila, Glance, etc.)
 
@@ -20,6 +21,7 @@ When working in this repository, you are helping users:
 openstack-tempest-coverage-automation/
 ├── skills/
 │   ├── jira-coverage-analysis/     # Analysis-only skill (fast, read-only)
+│   ├── post-test-plan/             # Post test plans to Jira (with fallback)
 │   ├── implement-tempest-tests/    # Implementation skill (with validation)
 │   └── shared/                     # Shared configuration and templates
 ├── docs/                           # Extended documentation
@@ -481,7 +483,7 @@ Users typically have:
 
 ## Subagent Usage Strategy
 
-Both skills use subagents intelligently for specific tasks:
+The analysis and implementation skills use subagents intelligently for specific tasks:
 
 ### Explore Agent (Pattern Discovery)
 
@@ -524,7 +526,7 @@ Currently, plan mode is handled by the main agent. Plan agent may be added in fu
 
 ### skills/shared/config.json
 
-Shared configuration used by both skills:
+Shared configuration used by all skills:
 
 **Contains:**
 - Service-to-plugin repository mapping (Cinder → cinder-tempest-plugin)
@@ -685,6 +687,12 @@ git push origin tempest-coverage-OSPRH-22613
 - Check `.env` file has correct credentials
 - Verify MCP server is configured in settings.json
 - Skills fall back to manual input if MCP unavailable
+
+**Posting to Jira fails (post-test-plan):**
+- Check if Jira MCP has write permissions enabled
+- Verify READ_ONLY_MODE=false in settings.json
+- Skill will show formatted plan for manual copy-paste if write disabled
+- See skill documentation for enabling write mode
 
 **Tox validation fails:**
 - Review tox output for specific errors
