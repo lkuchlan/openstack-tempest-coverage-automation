@@ -36,70 +36,33 @@ openstack-tempest-coverage-automation/
 
 ### /jira-coverage-analysis
 
-**Purpose:** Analyze Jira tickets for test coverage gaps (NO implementation)
+Analyze Jira tickets for test coverage gaps (NO implementation). Fast, read-only analysis for sprint planning and effort estimation.
 
-**When to use:** Sprint planning, effort estimation, identifying gaps before implementation, batch analysis
+**Use for:** Sprint planning • Effort estimation • Gap identification • Batch analysis
 
-**Workflow:**
-1. Fetch Jira ticket (or accept manual requirements)
-2. **Validate ticket** (status and automation relevance)
-3. Locate Tempest repositories
-4. Discover existing test coverage (Explore agent)
-5. Identify gaps with priority (HIGH/MEDIUM/LOW)
-6. Estimate effort (hours per gap)
-7. Provide implementation recommendations
-8. Generate structured markdown report
+**Key features:** Validates tickets (status + automation relevance) • Discovers existing coverage • Identifies gaps with priority • Estimates effort
 
-**Validation:**
-- Rejects closed/completed tickets (Closed, Done, Resolved, etc.)
-- Validates automation relevance (labels, keywords, issue type)
-- Override with `--force` flag if needed
-
-→ **Details:** [skills/jira-coverage-analysis/README.md](skills/jira-coverage-analysis/README.md)
-
----
+→ [Full documentation](skills/jira-coverage-analysis/README.md)
 
 ### /post-test-plan
 
-**Purpose:** Post test automation plan to Jira for stakeholder approval
+Post test automation plan to Jira for stakeholder approval. Prevents duplicate posts, works in read-only mode.
 
-**When to use:** After coverage analysis, before implementing tests, sharing test plan with team
+**Use for:** Stakeholder approval • Plan sharing • Team collaboration
 
-**Workflow:**
-1. Get analysis report (from memory or run analysis)
-2. Format as Jira markdown with tables
-3. **Check for duplicate plans** (prevents re-posting)
-4. Check Jira MCP write permissions
-5. Post to Jira OR show formatted plan for manual posting
-6. Include approval instructions (comment or emoji reaction)
+**Key features:** Duplicate detection • Formatted Jira markdown • Manual fallback if write disabled
 
-**Duplicate Prevention:**
-- Detects existing test plans in ticket comments
-- Asks user: skip, repost, or view existing plan
-- Marks updates with [UPDATED] prefix
-- Configurable behavior (ask_user, auto_skip, auto_repost)
-
-→ **Details:** [skills/post-test-plan/README.md](skills/post-test-plan/README.md)
-
----
+→ [Full documentation](skills/post-test-plan/README.md)
 
 ### /implement-tempest-tests
 
-**Purpose:** Implement Tempest tests from requirements with validation
+Implement Tempest tests from requirements with automatic validation. Creates branch, commits, runs tox.
 
-**When to use:** After coverage analysis and approval, implementing tests from Jira tickets, creating RBAC/negative/scenario tests
+**Use for:** Post-approval implementation • RBAC/negative/scenario tests • Jira ticket implementation
 
-**Workflow:**
-1. Get requirements (from analysis, Jira, or manual)
-2. Locate Tempest plugin repository
-3. Discover implementation patterns (Explore agent)
-4. Plan if complex (enter plan mode)
-5. Implement tests following strict standards
-6. Create git branch and commit
-7. Run tox validation (pep8 + py3)
-8. Generate mandatory final recap
+**Key features:** Pattern discovery • Strict standards enforcement • Tox validation • Git workflow automation
 
-→ **Details:** [skills/implement-tempest-tests/README.md](skills/implement-tempest-tests/README.md)
+→ [Full documentation](skills/implement-tempest-tests/README.md)
 
 ---
 
@@ -158,54 +121,11 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## Development Environment
 
-Users typically have:
+**Repositories:** Tempest plugins in `~/tempest-workspace/{service}-tempest-plugin` (configurable)
 
-**Local repositories:**
-- Tempest: `~/tempest-workspace/tempest` (or custom path)
-- Plugins: `~/tempest-workspace/{service}-tempest-plugin`
-  - Examples: `cinder-tempest-plugin`, `manila-tempest-plugin`, `glance-tempest-plugin`
+**Tools:** Python 3.8+ with tox • Git (Gerrit for upstream) • Optional: Jira MCP
 
-**Tools installed:**
-- Python 3.8+ with tox
-- Git configured for Gerrit review (if contributing upstream)
-- Optional: Jira MCP server for ticket fetching
-
-**Validation commands:**
-- `tox -e pep8` - PEP 8 style checking
-- `tox -e py3` - Unit tests in Python 3
-- `git review` - Submit to Gerrit (upstream)
-
----
-
-## Subagent Usage Strategy
-
-The analysis and implementation skills use subagents intelligently for specific tasks:
-
-### Explore Agent (Pattern Discovery)
-
-**When used:**
-- **jira-coverage-analysis:** STEP 3 - Discover Existing Coverage
-- **implement-tempest-tests:** STEP 3 - Discover Implementation Patterns
-
-**Purpose:**
-- Deep codebase search for existing tests
-- Finding base test classes to inherit from
-- Discovering service clients and their methods
-- Locating waiter implementations
-- Identifying cleanup patterns
-- Finding reference tests as templates
-
-**Why delegated:**
-- Thorough, methodical code discovery
-- Handles large codebases (100+ files) efficiently
-- Saves main agent token budget for analysis/implementation
-- Better pattern matching across repositories
-
-**Configuration:**
-- Mode: "very thorough"
-- Searches multiple file types and patterns
-- Follows imports and inheritance chains
-- Builds comprehensive pattern map
+**Validation:** `tox -e pep8,py3` (automatic before commit)
 
 ---
 
