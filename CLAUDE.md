@@ -56,12 +56,37 @@ openstack-tempest-coverage-automation/
 6. Provide implementation recommendations
 7. Generate structured markdown report
 
+### /post-test-plan
+
+**Purpose:** Post test automation plan to Jira for stakeholder approval
+
+**When to use:**
+- After coverage analysis is complete
+- Before implementing tests
+- When stakeholder approval is needed in Jira
+- Sharing test plan with team
+
+**Characteristics:**
+- Formats analysis as Jira markdown
+- Posts as comment (if write permissions enabled)
+- Provides formatted plan for manual copy-paste (fallback)
+- Adds approval workflow instructions
+
+**Workflow:**
+1. Get analysis report (from memory or run analysis)
+2. Format as Jira markdown with tables
+3. Check Jira MCP write permissions
+4. Post to Jira OR show formatted plan for manual posting
+5. Include approval instructions (comment or emoji reaction)
+
+**Note:** Works in both read-only and write mode. See skill documentation for enabling write permissions.
+
 ### /implement-tempest-tests
 
 **Purpose:** Implement Tempest tests from requirements with validation
 
 **When to use:**
-- After coverage analysis approval
+- After coverage analysis and approval
 - Implementing tests from Jira tickets
 - Creating RBAC, negative, or scenario tests
 - Following up on approved test plans
@@ -171,27 +196,64 @@ while self.volumes_client.show_volume(volume['id'])['status'] != 'available':
 **Why:** Waiters provide proper timeout handling, exponential backoff, and descriptive errors. `time.sleep()` causes unreliable tests and wastes CI time.
 
 #### 4. Cleanup
-**MUST** use `addCleanup()` for ALL created resources. **NEVER** rely on manual cleanup in `tearDown()`.
+**MUST** ensure ALL created resources are cleaned up. **NEVER** rely on manual cleanup in `tearDown()`.
 
-**Example:**
+**IMPORTANT:** Check if helper methods already handle cleanup before adding `addCleanup()`.
+
+**Tempest base class helpers (auto-cleanup):**
+Most Tempest base classes provide helper methods that **already register cleanup automatically**:
+- `self.create_volume()` - BaseVolumeTest helper (auto-cleanup)
+- `self.create_snapshot()` - BaseSnapshotsTest helper (auto-cleanup)
+- `self.create_backup()` - BaseBackupsTest helper (auto-cleanup)
+- `self.create_share()` - BaseSharesTest helper (auto-cleanup)
+- `self.create_server()` - BaseV2ComputeTest helper (auto-cleanup)
+
+**When to use addCleanup():**
+- Direct client calls (not using helper methods)
+- Resources created outside base class helpers
+- Custom cleanup logic needed
+
+**Examples:**
 ```python
-# ✅ CORRECT
+# ✅ CORRECT - Helper method with auto-cleanup
 def test_volume_creation(self):
-    volume = self.create_volume()
-    self.addCleanup(self.delete_volume, volume['id'])
+    volume = self.create_volume()  # Helper already registers cleanup
+    # No addCleanup needed - helper handles it
+    self.assertEqual('available', volume['status'])
+
+# ✅ CORRECT - Direct client call needs addCleanup
+def test_volume_from_raw_api(self):
+    volume = self.volumes_client.create_volume(size=1)['volume']
+    self.addCleanup(self.volumes_client.delete_volume, volume['id'])
     # Test continues...
 
-# ❌ WRONG - No cleanup
+# ✅ CORRECT - Custom resource needs cleanup
+def test_custom_resource(self):
+    resource = self.create_custom_resource()
+    self.addCleanup(self.cleanup_custom_resource, resource['id'])
+
+# ❌ WRONG - Redundant addCleanup with helper
 def test_volume_creation(self):
-    volume = self.create_volume()
+    volume = self.create_volume()  # Helper already cleans up
+    self.addCleanup(self.delete_volume, volume['id'])  # REDUNDANT!
+
+# ❌ WRONG - Direct API call without cleanup
+def test_volume_creation(self):
+    volume = self.volumes_client.create_volume(size=1)['volume']
     # Missing addCleanup - resource leaked!
 
 # ❌ WRONG - Manual tearDown
 def tearDown(self):
-    self.delete_volume(self.volume_id)  # Use addCleanup instead
+    self.delete_volume(self.volume_id)  # Use helper or addCleanup
 ```
 
-**Why:** `addCleanup()` ensures cleanup even when tests fail. It executes in reverse order (LIFO) for proper dependency handling.
+**How to verify:**
+1. Check if method comes from base class (e.g., `self.create_volume()`)
+2. Look for `addCleanup` in the helper method implementation
+3. If helper registers cleanup → Don't add redundant `addCleanup`
+4. If using client directly → Must add `addCleanup`
+
+**Why:** `addCleanup()` ensures cleanup even when tests fail. It executes in reverse order (LIFO) for proper dependency handling. Base class helpers already use this pattern internally.
 
 #### 5. Test Independence
 Tests **MUST** run in parallel without dependencies on execution order or shared state.
@@ -541,15 +603,21 @@ When improving these skills:
 
 ## Common Workflows
 
-### Workflow 1: Analyze and Implement from Jira
+### Workflow 1: Analyze, Post Plan, and Implement from Jira
 
 ```bash
 # Step 1: Analyze ticket for coverage gaps
 /jira-coverage-analysis OSPRH-22613
 
-# Review analysis report, approve implementation
+# Review analysis report
 
-# Step 2: Implement approved tests
+# Step 2: Post plan to Jira for stakeholder approval
+/post-test-plan OSPRH-22613
+# Posts formatted plan as Jira comment (or shows for manual posting)
+
+# Wait for stakeholder approval in Jira
+
+# Step 3: Implement approved tests
 /implement-tempest-tests OSPRH-22613
 
 # Review generated tests, run additional validation
@@ -561,7 +629,24 @@ git push origin tempest-coverage-OSPRH-22613
 git review  # If using Gerrit
 ```
 
-### Workflow 2: Batch Analysis for Sprint Planning
+### Workflow 2: Analyze and Implement Directly (No Approval)
+
+```bash
+# Step 1: Analyze ticket for coverage gaps
+/jira-coverage-analysis OSPRH-22613
+
+# Review analysis report, decide to implement
+
+# Step 2: Implement approved tests directly
+/implement-tempest-tests OSPRH-22613
+
+# Review generated tests
+cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
+tox -e pep8,py3
+git push origin tempest-coverage-OSPRH-22613
+```
+
+### Workflow 3: Batch Analysis for Sprint Planning
 
 ```bash
 # Analyze multiple tickets at once
@@ -572,7 +657,7 @@ git review  # If using Gerrit
 # Implement tickets in priority order
 ```
 
-### Workflow 3: Without Jira MCP (Manual Requirements)
+### Workflow 4: Without Jira MCP (Manual Requirements)
 
 ```bash
 # Skills work without Jira integration
