@@ -37,7 +37,6 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 - 📝 **Upstream-Compliant Generation** - Follows Tempest HACKING guidelines strictly  
 - ✅ **Automatic Validation** - Runs `tox -e pep8,py3` before commit
 - 🔄 **Git Workflow Automation** - Creates branches, commits with proper messages
-- 🛡️ **Pre-commit Quality Enforcement** - Blocks common violations (time.sleep, raw API, no cleanup)
 - 🔐 **Optional Jira Integration** - Works with or without Jira MCP
 - 📊 **Structured Reports** - Gap analysis with priorities and effort estimates
 - 🎓 **RBAC, Negative, Scenario Tests** - Comprehensive coverage types
@@ -53,7 +52,6 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 - [Usage](#-usage)
 - [Credential Management](#-credential-management)
 - [Subagent Strategy](#-subagent-strategy)
-- [Pre-commit Hooks](#-pre-commit-hooks)
 - [Documentation](#-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -148,7 +146,7 @@ Tests Ready for Review & Push
 ### Prerequisites
 
 - **Claude Code** - [Install from claude.ai/code](https://claude.ai/code)
-- **Python 3.8+** - For Tempest and hooks
+- **Python 3.8+** - For Tempest validation
 - **tox** - For test validation
 - **git** - For version control
 - **Optional:** Jira MCP server
@@ -374,7 +372,6 @@ The repository has multiple security layers:
 1. **`.gitignore`** - Blocks `.env`, `.env.local`, `*.secret`, `*.token`, `*.local.json`
 2. **`.env.example`** - Template with placeholders only
 3. **Documentation** - Clear security guidelines
-4. **Pre-commit checks** - (Future) Detect credential patterns
 
 ### Setup Steps
 
@@ -391,12 +388,7 @@ cp examples/.env.example .env
 vi .env
 ```
 
-**3. Secure the file:**
-```bash
-chmod 600 .env
-```
-
-**4. Verify it's git-ignored:**
+**3. Verify it's git-ignored:**
 ```bash
 git status
 # .env should NOT appear in untracked files
@@ -479,71 +471,6 @@ These skills use Claude's **Explore agent** intelligently for pattern discovery.
 
 ---
 
-## 🛡️ Pre-commit Hooks for Tempest Standards
-
-Enforce OpenStack Tempest coding standards automatically before each commit.
-
-### What Gets Checked
-
-✅ **Proper Tempest client usage** - No raw `requests/urllib`  
-✅ **Base class inheritance** - Tempest base classes only  
-✅ **Waiter usage** - No `time.sleep()` for polling  
-✅ **Resource cleanup** - `addCleanup()` for all resources  
-✅ **Required decorators** - `@decorators.idempotent_id()` present  
-
-### Installation
-
-**In your Tempest plugin repository:**
-
-```bash
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-
-# Install hooks
-/path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
-```
-
-### Usage
-
-Hooks run automatically on `git commit`:
-
-```bash
-git add cinder_tempest_plugin/api/volume/test_myfeature.py
-git commit -m "Add test coverage for feature X"
-
-🔍 Checking OpenStack Tempest test standards...
-[1/1] Checking: cinder_tempest_plugin/api/volume/test_myfeature.py
-
-✅ All Tempest standards checks passed!
-```
-
-### If Violations Found
-
-```bash
-❌ Tempest standards violations found!
-
-❌ Waiter violations in test_myfeature.py:
-   Line 45: Using time.sleep() - Use Tempest waiters instead
-
-   💡 Fix: Use Tempest waiters instead of sleep/polling
-   Examples:
-     waiters.wait_for_volume_resource_status(client, vol_id, 'available')
-
-Reference: https://docs.openstack.org/tempest/latest/HACKING.html
-```
-
-**Fix the issues and commit again**, or bypass (not recommended):
-```bash
-git commit --no-verify  # Skip hooks (NOT RECOMMENDED)
-```
-
-### Uninstall
-
-```bash
-rm .git/hooks/pre-commit
-rm -rf .git/hooks/checks/
-```
-
----
 
 ## 📚 Documentation
 
@@ -593,7 +520,7 @@ cd openstack-tempest-coverage-automation
 # Test on real Tempest repositories
 ./scripts/setup.sh
 
-# Make changes to skills/ or hooks/
+# Make changes to skills/
 
 # Test changes
 claude

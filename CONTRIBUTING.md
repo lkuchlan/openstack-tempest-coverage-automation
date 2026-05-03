@@ -13,7 +13,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 - **Add test templates** - More patterns = better test generation
 - **Enhance pattern detection** - Improve code discovery
 - **Support new services** - Neutron, Barbican, Heat, etc.
-- **Add validation checks** - More pre-commit hooks
+- **Add validation checks** - Better tox integration
 
 ### Enhance Documentation
 - **Add examples** - Real-world workflows
@@ -29,7 +29,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 - Claude Code installed
 - Python 3.8+
-- tox (for testing hooks)
+- tox (for validation testing)
 - git
 - Real Tempest repositories for testing
 
@@ -43,7 +43,7 @@ cd openstack-tempest-coverage-automation
 # 2. Install for development
 ./scripts/setup.sh
 
-# 3. Make changes to skills/ or hooks/
+# 3. Make changes to skills/
 
 # 4. Test your changes
 claude
@@ -88,45 +88,6 @@ cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 tox -e pep8,py3
 ```
 
-### For Pre-commit Hook Changes
-
-**1. Edit hook scripts**
-
-```bash
-vi hooks/checks/check-waiters.py
-```
-
-**2. Test hooks locally**
-
-```bash
-# Create test file with violations
-cat > test_example.py << 'EOF'
-import time
-
-class TestExample:
-    def test_something(self):
-        time.sleep(10)  # Should be caught
-EOF
-
-# Test hook
-python3 hooks/checks/check-waiters.py test_example.py
-# Should fail with clear error message
-```
-
-**3. Test in real repository**
-
-```bash
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-
-# Install hooks
-/path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
-
-# Test by committing a file with violations
-git add test_example.py
-git commit -m "Test hooks"
-# Should block commit
-```
-
 ### For Documentation Changes
 
 **1. Edit documentation**
@@ -163,11 +124,6 @@ grep -r '\[.*\](.*\.md)' docs/
 - Test error handling (invalid tickets, missing repos)
 - Verify generated tests pass tox validation
 
-**Hooks:**
-- Test each check individually
-- Test with valid and invalid code
-- Verify error messages are clear
-- Ensure hooks don't block valid code
 
 **Documentation:**
 - Follow markdown linting
@@ -179,22 +135,22 @@ grep -r '\[.*\](.*\.md)' docs/
 
 - Skills should complete analysis in < 5 minutes
 - Implementation should complete in < 10 minutes
-- Hooks should complete in < 5 seconds per file
+- Validation should complete efficiently
 - No unnecessary API calls or file reads
 
 ---
 
 ## Code Style
 
-### Python (Hooks)
+### Python (Skills)
 
 Follow PEP 8:
 ```bash
-# Check style
-flake8 hooks/checks/
+# Check style in skills
+flake8 skills/
 
 # Auto-format
-black hooks/checks/
+black skills/
 ```
 
 ### Bash (Scripts)
@@ -203,7 +159,7 @@ Follow ShellCheck:
 ```bash
 # Check style
 shellcheck scripts/setup.sh
-shellcheck hooks/pre-commit
+shellcheck scripts/*.sh
 ```
 
 ### Markdown (Documentation)
@@ -311,7 +267,7 @@ Closes #42
 
 **Quality:**
 - Is the code readable?
-- Are there tests (for hooks)?
+- Are there tests (if applicable)?
 - Is it documented?
 
 **Compatibility:**
@@ -376,7 +332,6 @@ Closes #42
 openstack-tempest-coverage-automation/
 ├── .claude/skills/           # Existing skills (to be moved to skills/)
 ├── skills/                   # Skills for GitHub distribution
-├── hooks/                    # Pre-commit hooks
 ├── docs/                     # Extended documentation
 ├── examples/                 # Configuration templates
 └── scripts/                  # Utility scripts
@@ -385,11 +340,11 @@ openstack-tempest-coverage-automation/
 ### Naming Conventions
 
 **Files:**
-- Lowercase with hyphens: `check-waiters.py`
-- Descriptive names: `install-hooks.sh`
+- Lowercase with hyphens: `jira-coverage-analysis/`
+- Descriptive names: `setup.sh`
 
 **Functions:**
-- Snake case: `check_file()`, `install_hooks()`
+- Snake case: `check_file()`, `validate_config()`
 
 **Variables:**
 - Snake case: `repo_root`, `staged_files`

@@ -42,7 +42,7 @@ echo -e "${GREEN}✓${NC} Claude Code is installed"
 
 # Check Python 3
 if ! command -v python3 &> /dev/null; then
-    echo -e "${YELLOW}⚠️  Python 3 not found (required for pre-commit hooks)${NC}"
+    echo -e "${YELLOW}⚠️  Python 3 not found (required for tox validation)${NC}"
 else
     echo -e "${GREEN}✓${NC} Python 3 is installed"
 fi
@@ -520,10 +520,6 @@ if [[ $REPLY =~ ^[Yy]$ ]] && command -v uv &> /dev/null && [ -n "$MCP_CONFIG" ];
     echo -e "${YELLOW}3. (Optional) Update repository paths in shared config:${NC}"
     echo -e "   vi $SKILLS_DIR/tempest-coverage/config.json"
     echo ""
-    echo -e "${YELLOW}4. (Optional) Install pre-commit hooks in your Tempest plugin repos:${NC}"
-    echo -e "   cd \$TEMPEST_WORKSPACE/cinder-tempest-plugin"
-    echo -e "   $REPO_ROOT/hooks/install-hooks.sh"
-    echo ""
 else
     echo -e "${YELLOW}1. (Optional) Edit .env with your Jira credentials:${NC}"
     echo -e "   vi $REPO_ROOT/.env"
@@ -538,10 +534,6 @@ else
     echo -e "${YELLOW}4. Test the skills:${NC}"
     echo -e "   claude"
     echo -e "   > ${BLUE}/jira-coverage-analysis --help${NC}"
-    echo ""
-    echo -e "${YELLOW}5. (Optional) Install pre-commit hooks in your Tempest plugin repos:${NC}"
-    echo -e "   cd \$TEMPEST_WORKSPACE/cinder-tempest-plugin"
-    echo -e "   $REPO_ROOT/hooks/install-hooks.sh"
     echo ""
 fi
 

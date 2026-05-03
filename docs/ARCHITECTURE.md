@@ -60,19 +60,17 @@ Overview of the OpenStack Tempest Coverage Automation system design.
 - API test template
 - Scenario test template
 
-### Pre-commit Hooks
+### Validation with Tox
 
-**Enforcement layer:**
-- Runs before every git commit
-- Validates Tempest standards
-- Blocks common violations
-- Fast execution (< 5 seconds)
+**Quality enforcement:**
+- Runs after implementation (before commit finalization)
+- Validates Tempest standards via tox
+- Catches PEP 8 violations, test failures
+- Execution time: 30-90 seconds
 
-**Checks:**
-- check-tempest-imports.py
-- check-base-classes.py
-- check-waiters.py
-- check-cleanup.py
+**Tox environments:**
+- `tox -e pep8` - Style and import checking
+- `tox -e py3` - Unit test validation
 
 ### Explore Agent
 
@@ -168,10 +166,10 @@ Skills use Claude Code memory for:
 3. Add client patterns
 4. Test with real repository
 
-**Add new check:**
-1. Create check script in hooks/checks/
-2. Add to hooks/pre-commit
-3. Test with valid/invalid code
+**Add new validation:**
+1. Update skill validation logic
+2. Test with tox on real code
+3. Ensure proper error messaging
 
 **Add new template:**
 1. Create template in skills/shared/templates/

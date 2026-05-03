@@ -22,7 +22,6 @@ openstack-tempest-coverage-automation/
 │   ├── jira-coverage-analysis/     # Analysis-only skill (fast, read-only)
 │   ├── implement-tempest-tests/    # Implementation skill (with validation)
 │   └── shared/                     # Shared configuration and templates
-├── hooks/                          # Pre-commit hooks for Tempest standards
 ├── docs/                           # Extended documentation
 ├── examples/                       # Configuration templates
 └── scripts/                        # Setup and utility scripts
@@ -302,7 +301,7 @@ class MyTests(base.BaseVolumeTest):
 
 ### ❌ FORBIDDEN Patterns
 
-**These patterns will FAIL code review and pre-commit hooks:**
+**These patterns will FAIL code review and tox validation:**
 
 1. **Using requests/urllib directly**
    ```python
@@ -388,42 +387,12 @@ Change-Id: Iabc123...
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
-### Pre-commit Hook Workflow
+### Validation
+All implemented tests are validated using tox before finalizing the commit:
+- `tox -e pep8` - PEP 8 style and import checking
+- `tox -e py3` - Unit test validation
 
-**If hooks are installed** (user ran `hooks/install-hooks.sh` in their Tempest repo):
-
-When you commit, git will **automatically run** pre-commit hooks that validate:
-- Proper Tempest imports (no requests/urllib)
-- Base class usage (Tempest base classes)
-- Waiter usage (no time.sleep)
-- Cleanup patterns (addCleanup for resources)
-
-**If hook fails:**
-1. **Read the error message** - it tells you exactly what to fix
-2. **Fix the violation** in the code
-3. **Stage the fix:** `git add {file}`
-4. **Retry commit** - hooks will run again
-5. Repeat until hooks pass
-
-**Example:**
-```bash
-git commit -m "Add RBAC tests"
-# Hook output:
-# ❌ Waiter violations in test_rbac.py:
-#    Line 45: Using time.sleep() - Use Tempest waiters
-
-# Fix the code: replace time.sleep() with waiters.wait_for_volume_status()
-git add test_rbac.py
-git commit -m "Add RBAC tests"  # Now passes!
-```
-
-### Never Skip Hooks
-- **NEVER** use `git commit --no-verify`
-- **NEVER** use `--no-gpg-sign`
-- **NEVER** bypass pre-commit hooks
-- If hook fails, **FIX THE ISSUE** rather than bypassing
-
-**Why:** Hooks are the safety net that catches mistakes in AI-generated code. They ensure production-ready quality.
+This ensures all code meets OpenStack quality standards before being committed.
 
 ---
 
@@ -635,12 +604,7 @@ git review  # If using Gerrit
 **Tox validation fails:**
 - Review tox output for specific errors
 - Fix violations manually or ask Claude to fix
-- Pre-commit hooks catch most issues before commit
-
-**Pre-commit hooks block commit:**
-- Review error messages (very specific)
-- Fix violations (imports, waiters, cleanup, etc.)
-- DO NOT bypass hooks with `--no-verify`
+- Common issues: imports, PEP 8 style, test failures
 
 ---
 
@@ -659,5 +623,5 @@ git review  # If using Gerrit
 
 **Git Safety:**
 - Skills never auto-push to remote
-- Skills never skip git hooks
 - User reviews all commits before submission
+- Tox validation ensures code quality

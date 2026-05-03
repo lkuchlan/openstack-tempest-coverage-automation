@@ -144,27 +144,25 @@ tox -e pep8
 # Provide detailed scenarios when prompted
 ```
 
-### Pre-commit Hooks Blocking Commits
+### Tox Validation Fails
 
-**Symptom:** Hooks detect violations and block commit
+**Symptom:** `tox -e pep8` or `tox -e py3` reports errors
 
 **Solution:**
 ```bash
-# Read the error messages carefully - they're specific
+# Read the tox output carefully - it shows specific violations
 # Example error:
-# ❌ Waiter violations in test_file.py:
-#    Line 45: Using time.sleep() - Use Tempest waiters
+# E501 line too long (120 > 79 characters)
+# F401 'time' imported but unused
 
-# Fix the violation:
-# Before: time.sleep(10)
-# After: waiters.wait_for_volume_resource_status(...)
+# Fix the violations:
+# - Shorten lines
+# - Remove unused imports
+# - Fix import ordering
 
-# Commit again
-git commit -m "Fix waiter usage"
+# Run tox again
+tox -e pep8
 # ✅ Should pass
-
-# To bypass (NOT RECOMMENDED):
-git commit --no-verify
 ```
 
 ## Skill Execution Issues
@@ -225,17 +223,20 @@ git branch -D tempest-coverage-TICKET-123
 
 ### Commit Failed
 
-**Symptom:** Git commit fails with pre-commit hook errors
+**Symptom:** Git commit fails
 
 **Solution:**
 ```bash
-# Review hook errors
-# Fix violations
-# Commit will succeed after fixes
+# Check git status
+git status
 
-# If hooks are incorrect, file an issue
-# Temporary bypass (not recommended):
-git commit --no-verify
+# Ensure files are staged
+git add file.py
+
+# Retry commit
+git commit -m "Your message"
+
+# If still failing, check git output for specific error
 ```
 
 ## Permission Issues
@@ -310,7 +311,7 @@ tail -f ~/.claude/logs/latest.log
 | "Jira MCP connection failed" | Invalid credentials or MCP not configured | Check .env and settings.json |
 | "Tox validation failed" | Test code errors | Review tox output, fix errors |
 | "Skill not found" | Skills not installed | Run ./scripts/setup.sh |
-| "Pre-commit hook failed" | Code violations | Read error, fix violation |
+| "Tox validation failed" | Code style/quality issues | Read error, fix violation |
 | "Permission denied" | Missing allow rule | Add to permissions.allow |
 
 ## Reset and Start Fresh

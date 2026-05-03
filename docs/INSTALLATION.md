@@ -6,7 +6,7 @@ Comprehensive installation guide for OpenStack Tempest Coverage Automation.
 
 ### Required
 - **Claude Code** - Version 1.x or later ([claude.ai/code](https://claude.ai/code))
-- **Python 3.8+** - For Tempest and pre-commit hooks
+- **Python 3.8+** - For Tempest validation with tox
 - **git** - Version control
 
 ### Recommended

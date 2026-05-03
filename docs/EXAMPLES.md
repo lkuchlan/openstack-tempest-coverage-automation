@@ -65,35 +65,4 @@ git push origin tempest-coverage-OSPRH-22613
 # Same quality implementation as with Jira
 ```
 
-## Example 4: Pre-commit Hooks in Action
-
-**Scenario:** Hooks catch violations before commit
-
-```bash
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-
-# Create test with violation
-cat > test_example.py << 'EOF'
-import time
-
-class TestExample:
-    def test_something(self):
-        time.sleep(10)  # Violation!
-EOF
-
-git add test_example.py
-git commit -m "Add test"
-
-# Output:
-# 🔍 Checking Tempest standards...
-# ❌ Waiter violations in test_example.py:
-#    Line 5: Using time.sleep() - Use Tempest waiters
-# ❌ Commit blocked
-
-# Fix and retry
-# Now uses: waiters.wait_for_volume_resource_status(...)
-git commit -m "Add test (fixed)"
-# ✅ All checks passed!
-```
-
 See [README.md](../README.md) for more workflows and [QUICKSTART.md](QUICKSTART.md) for setup.

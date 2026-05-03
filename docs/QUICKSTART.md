@@ -114,15 +114,6 @@ Add to `.claude/settings.json`:
 }
 ```
 
-## Optional: Install Pre-commit Hooks
-
-```bash
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-/path/to/openstack-tempest-coverage-automation/hooks/install-hooks.sh
-```
-
-Hooks will enforce Tempest standards on every commit.
-
 ## Common Workflows
 
 ### Sprint Planning
