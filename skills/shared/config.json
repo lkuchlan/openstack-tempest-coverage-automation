@@ -90,7 +90,16 @@
       "comments"
     ],
     "search_related_tickets": true,
-    "max_related_tickets": 5
+    "max_related_tickets": 5,
+    "post_test_plan": {
+      "description": "Settings for posting test plans to Jira",
+      "auto_post": false,
+      "mention_assignee": true,
+      "add_labels": ["automation-test-plan"],
+      "format": "format1",
+      "approval_keywords": ["approved", "LGTM", "looks good"],
+      "read_only_fallback": true
+    }
   },
 
   "git_workflow": {
