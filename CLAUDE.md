@@ -131,62 +131,20 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## Quick Start
 
-**First time setup:**
-```bash
-git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
-cd openstack-tempest-coverage-automation
-./scripts/setup.sh
-```
-
-**Basic workflow:**
 ```bash
 /jira-coverage-analysis TICKET-123
 /post-test-plan TICKET-123
 /implement-tempest-tests TICKET-123
 ```
 
-→ More workflows: [docs/EXAMPLES.md](docs/EXAMPLES.md)
+→ Setup: [docs/INSTALLATION.md](docs/INSTALLATION.md) • Workflows: [docs/EXAMPLES.md](docs/EXAMPLES.md)
 
 ---
 
 ## Documentation
 
-**User Guides:**
-| Topic | Document |
-|-------|----------|
-| Installation | [docs/INSTALLATION.md](docs/INSTALLATION.md) |
-| Quick Start | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
-| Examples & Workflows | [docs/EXAMPLES.md](docs/EXAMPLES.md) |
-| Troubleshooting | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
-| Jira Setup | [docs/JIRA_SETUP.md](docs/JIRA_SETUP.md) |
-| Architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+**Guides:** [Installation](docs/INSTALLATION.md) • [Quick Start](docs/QUICKSTART.md) • [Examples](docs/EXAMPLES.md) • [Troubleshooting](docs/TROUBLESHOOTING.md) • [Jira Setup](docs/JIRA_SETUP.md)
 
-**Reference Documentation:**
-| Topic | Document |
-|-------|----------|
-| **Tempest Standards** | [references/TEMPEST_STANDARDS.md](references/TEMPEST_STANDARDS.md) |
-| **Configuration Options** | [references/CONFIGURATION.md](references/CONFIGURATION.md) |
+**Reference:** [Tempest Standards](references/TEMPEST_STANDARDS.md) • [Configuration](references/CONFIGURATION.md)
 
-**Contributing:**
-| Topic | Document |
-|-------|----------|
-| Contributing Guide | [CONTRIBUTING.md](CONTRIBUTING.md) |
-
----
-
-## References
-
-**Upstream Documentation:**
-- Tempest HACKING: https://docs.openstack.org/tempest/latest/HACKING.html
-- Tempest Plugin Interface: https://docs.openstack.org/tempest/latest/plugin.html
-- OpenStack API Reference: https://docs.openstack.org/api-ref/
-- Tempest Configuration: https://docs.openstack.org/tempest/latest/configuration.html
-
-**Service-specific API docs:**
-- Cinder API: https://docs.openstack.org/api-ref/block-storage/
-- Manila API: https://docs.openstack.org/api-ref/shared-file-system/
-- Glance API: https://docs.openstack.org/api-ref/image/
-- Nova API: https://docs.openstack.org/api-ref/compute/
-
-**Jira MCP:**
-- Official MCP Server: https://github.com/modelcontextprotocol/servers
+**Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md)
