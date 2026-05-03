@@ -89,6 +89,159 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 
 ---
 
+### STEP 2.5: Check for Duplicate Plan (Duplicate Detection)
+
+**CRITICAL: Prevent duplicate test plan comments on the same ticket.**
+
+**Actions:**
+
+1. **Check if duplicate detection is enabled:**
+   - Read config: `skills/shared/config.json` → `jira_integration.post_test_plan.duplicate_detection.enabled`
+   - If disabled, skip duplicate check → proceed to STEP 3
+   - If enabled, continue duplicate detection
+
+2. **Fetch existing comments:**
+   
+   **If Jira MCP available:**
+   ```
+   Use: mcp__mcp-atlassian__jira_get_issue(
+       issue_key=ticket_id,
+       fields="comment",
+       comment_limit=100
+   )
+   
+   Extract: comments = response.fields.comment.comments
+   ```
+   
+   **If Jira MCP NOT available:**
+   - Skip duplicate detection (can't check without Jira access)
+   - Log: "⚠️ Duplicate detection skipped (Jira MCP not available)"
+   - Proceed to STEP 3
+
+3. **Search for test plan markers:**
+   
+   ```
+   duplicate_found = False
+   existing_plan_comment = None
+   
+   markers = config.jira_integration.post_test_plan.duplicate_detection.comment_markers
+   
+   for comment in comments:
+       comment_body = comment.body
+       
+       # Check if any marker exists in comment
+       for marker in markers:
+           if marker in comment_body:
+               duplicate_found = True
+               existing_plan_comment = comment
+               break
+       
+       if duplicate_found:
+           break
+   ```
+
+4. **If duplicate found:**
+   
+   **Extract metadata:**
+   ```
+   author = existing_plan_comment.author.displayName
+   created_date = existing_plan_comment.created  # ISO timestamp
+   comment_id = existing_plan_comment.id
+   ```
+   
+   **Check configured behavior:**
+   ```
+   on_duplicate = config.jira_integration.post_test_plan.duplicate_detection.on_duplicate_found
+   
+   if on_duplicate == "ask_user":
+       # Ask user what to do (see below)
+   elif on_duplicate == "auto_skip":
+       # Skip posting, inform user
+       Output: "ℹ️ Test plan already exists for {ticket_id} (posted {date}). Skipping repost."
+       END workflow
+   elif on_duplicate == "auto_repost":
+       # Post with [UPDATED] prefix
+       Add "[UPDATED]" prefix to plan
+       Proceed to STEP 3
+   ```
+   
+   **User interaction (if on_duplicate == "ask_user"):**
+   
+   Show message:
+   ```markdown
+   ⚠️ Test Plan Already Exists
+   
+   **Ticket:** {ticket_id}
+   **Existing plan posted:** {created_date}
+   **Posted by:** {author}
+   
+   A test automation plan was already posted to this ticket.
+   
+   **Options:**
+   1. **Skip** - Keep existing plan, don't post new one
+   2. **Repost** - Post updated plan (marks as [UPDATED])
+   3. **View** - Show existing plan content first
+   
+   What would you like to do? (Type: skip / repost / view)
+   ```
+   
+   **Handle response:**
+   - **"skip"** or **"s"**: 
+     ```
+     Output: "✅ Skipped posting (existing plan preserved)"
+     END workflow
+     ```
+   
+   - **"view"** or **"v"**:
+     ```
+     Output:
+     ---
+     Existing Test Plan:
+     {existing_plan_comment.body}
+     ---
+     
+     Ask: "Post updated plan? (yes/no)"
+     - yes → repost
+     - no → skip
+     ```
+   
+   - **"repost"** or **"r"** or **"yes"**:
+     ```
+     Modify formatted plan (from STEP 2):
+     Add prefix to header:
+     
+     OLD: "h2. 🤖 Test Automation Plan"
+     NEW: "h2. 🤖 [UPDATED] Test Automation Plan"
+     
+     Add timestamp line after header:
+     "_Updated: {current_date} (replacing plan from {original_date})_"
+     
+     Proceed to STEP 3 (post the updated plan)
+     ```
+
+5. **If NO duplicate found:**
+   - Log: "✅ No existing test plan found"
+   - Proceed to STEP 3 (post normally)
+
+**Tool Usage:**
+- **jira_get_issue** (with comment_limit parameter)
+- **Read** (config.json)
+- **String searching** (marker detection)
+- **User interaction** (for ask_user mode)
+
+**Output:**
+- ✅ No duplicate → Continue to STEP 3
+- ⚠️ Duplicate found → Ask user OR auto-handle
+- 🛑 User chose skip → END (don't post)
+- 🔄 User chose repost → Modify plan, continue to STEP 3
+
+**Error Handling:**
+- If comment fetch fails → Log warning, skip duplicate check, proceed to STEP 3
+- If config missing → Default to "ask_user" behavior
+- If markers list empty → Skip duplicate check
+
+---
+
 ### STEP 3: Post to Jira
 
 **Actions:**

@@ -51,12 +51,18 @@ openstack-tempest-coverage-automation/
 
 **Workflow:**
 1. Fetch Jira ticket (or accept manual requirements)
-2. Locate Tempest repositories
-3. Discover existing test coverage (Explore agent)
-4. Identify gaps with priority (HIGH/MEDIUM/LOW)
-5. Estimate effort (hours per gap)
-6. Provide implementation recommendations
-7. Generate structured markdown report
+2. **Validate ticket** (status and automation relevance)
+3. Locate Tempest repositories
+4. Discover existing test coverage (Explore agent)
+5. Identify gaps with priority (HIGH/MEDIUM/LOW)
+6. Estimate effort (hours per gap)
+7. Provide implementation recommendations
+8. Generate structured markdown report
+
+**Validation:**
+- Rejects closed/completed tickets (Closed, Done, Resolved, etc.)
+- Validates automation relevance (labels, keywords, issue type)
+- Override with `--force` flag if needed
 
 ### /post-test-plan
 
@@ -77,9 +83,16 @@ openstack-tempest-coverage-automation/
 **Workflow:**
 1. Get analysis report (from memory or run analysis)
 2. Format as Jira markdown with tables
-3. Check Jira MCP write permissions
-4. Post to Jira OR show formatted plan for manual posting
-5. Include approval instructions (comment or emoji reaction)
+3. **Check for duplicate plans** (prevents re-posting)
+4. Check Jira MCP write permissions
+5. Post to Jira OR show formatted plan for manual posting
+6. Include approval instructions (comment or emoji reaction)
+
+**Duplicate Prevention:**
+- Detects existing test plans in ticket comments
+- Asks user: skip, repost, or view existing plan
+- Marks updates with [UPDATED] prefix
+- Configurable behavior (ask_user, auto_skip, auto_repost)
 
 **Note:** Works in both read-only and write mode. See skill documentation for enabling write permissions.
 

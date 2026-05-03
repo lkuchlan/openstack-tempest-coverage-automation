@@ -91,6 +91,56 @@
     ],
     "search_related_tickets": true,
     "max_related_tickets": 5,
+    "ticket_validation": {
+      "description": "Validation rules for Jira tickets before analysis",
+      "enabled": true,
+      "allow_force_bypass": true,
+      "status_validation": {
+        "description": "Validates ticket status to reject closed/completed tickets",
+        "enabled": true,
+        "invalid_statuses": [
+          "Closed",
+          "Done",
+          "Resolved",
+          "Won't Fix",
+          "Won't Do",
+          "Rejected",
+          "Obsolete",
+          "Cancelled"
+        ],
+        "case_insensitive": true,
+        "error_message": "Ticket {ticket_id} has status '{status}' and appears to be completed. Coverage analysis is only performed on active tickets requiring work."
+      },
+      "automation_relevance": {
+        "description": "Validates ticket is automation/testing related work",
+        "enabled": true,
+        "validation_method": "any_match",
+        "required_labels": [
+          "automation",
+          "test-automation",
+          "tempest",
+          "qa-automation",
+          "test-coverage"
+        ],
+        "required_issue_types": [
+          "Test",
+          "Testing",
+          "Test Coverage",
+          "QE Task"
+        ],
+        "required_keywords": [
+          "tempest",
+          "test coverage",
+          "test automation",
+          "rbac test",
+          "scenario test",
+          "api test"
+        ],
+        "search_fields": ["summary", "description", "labels"],
+        "case_insensitive": true,
+        "error_message": "Ticket {ticket_id} does not appear to be automation-related. Expected labels like 'automation' or keywords like 'tempest' in summary/description."
+      }
+    },
     "post_test_plan": {
       "description": "Settings for posting test plans to Jira",
       "auto_post": false,
@@ -98,7 +148,20 @@
       "add_labels": ["automation-test-plan"],
       "format": "format1",
       "approval_keywords": ["approved", "LGTM", "looks good"],
-      "read_only_fallback": true
+      "read_only_fallback": true,
+      "duplicate_detection": {
+        "description": "Prevents posting duplicate test plans to the same ticket",
+        "enabled": true,
+        "comment_markers": [
+          "🤖 Test Automation Plan",
+          "Test Automation Plan",
+          "h2. 🤖 Test Automation Plan"
+        ],
+        "comment_limit": 100,
+        "on_duplicate_found": "ask_user",
+        "duplicate_message": "A test plan was already posted to {ticket_id} on {date} by {author}.",
+        "repost_prefix": "[UPDATED]"
+      }
     }
   },
 

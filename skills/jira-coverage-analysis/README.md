@@ -23,6 +23,36 @@ Use this skill for:
 - **Comprehensive:** Identifies ALL gaps with priority
 - **Actionable:** Provides implementation recommendations
 
+## Ticket Validation
+
+Validates tickets before analysis to ensure they're ready for coverage work:
+
+- ✅ **Ticket status** - Rejects closed/completed tickets (Closed, Done, Resolved, Won't Fix, etc.)
+- ✅ **Automation relevance** - Validates ticket is automation-related work
+
+**Bypass validation:**
+```bash
+/jira-coverage-analysis RHEL-12345 --force
+```
+
+**What gets validated:**
+
+**Status validation:**
+- Checks ticket is not in completed state
+- Prevents wasting time on tickets that don't need work
+- Customizable invalid statuses in config
+
+**Automation relevance (any match):**
+- Labels: automation, test-automation, tempest, qa-automation
+- Issue types: Test, Testing, QE Task
+- Keywords in summary/description: tempest, test coverage, test automation
+
+**Configuration:**
+Edit `skills/shared/config.json` → `jira_integration.ticket_validation` to customize:
+- Which statuses are considered invalid
+- Which labels/keywords indicate automation work
+- Enable/disable validation
+
 ## Quick Start
 
 ### Analyze Single Ticket

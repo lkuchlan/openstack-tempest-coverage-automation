@@ -66,6 +66,174 @@ This skill is for:
 
 ---
 
+### STEP 1.5: Validate Ticket (Ticket Screening)
+
+**CRITICAL: This step validates the ticket is suitable for coverage analysis.**
+
+**Actions:**
+
+1. **Check if validation is enabled:**
+   - Read config: `skills/shared/config.json` → `jira_integration.ticket_validation.enabled`
+   - If disabled (or config missing), skip validation → proceed to STEP 2
+   - If enabled, continue validation checks
+
+2. **Check for --force flag:**
+   - Check if user invoked with `--force` flag: `/jira-coverage-analysis TICKET-123 --force`
+   - If `--force` present AND `allow_force_bypass: true` in config:
+     - Log warning: "⚠️ Validation bypassed with --force flag"
+     - Skip validation → proceed to STEP 2
+   - If no `--force`, continue validation
+
+3. **Status Validation:**
+   
+   **If MCP available:**
+   - Ticket already fetched in STEP 1 includes `status` field
+   - Extract status from ticket: `ticket.fields.status.name`
+   
+   **Validation logic:**
+   ```
+   config_statuses = config.jira_integration.ticket_validation.status_validation.invalid_statuses
+   case_insensitive = config.jira_integration.ticket_validation.status_validation.case_insensitive
+   
+   ticket_status = ticket.fields.status.name
+   
+   if case_insensitive:
+       invalid_match = any(s.lower() == ticket_status.lower() for s in config_statuses)
+   else:
+       invalid_match = ticket_status in config_statuses
+   
+   if invalid_match:
+       FAIL → Go to Error Handling (step 5)
+   ```
+   
+   **If MCP NOT available:**
+   - Skip status validation (can't verify without Jira access)
+   - Continue to automation relevance check
+
+4. **Automation Relevance Validation:**
+   
+   **Validation Strategy:** Use "any_match" approach (ticket passes if ANY criterion matches)
+   
+   - **Check 1: Labels**
+     ```
+     required_labels = config.jira_integration.ticket_validation.automation_relevance.required_labels
+     ticket_labels = ticket.fields.labels
+     
+     if any(label.lower() in [l.lower() for l in required_labels] for label in ticket_labels):
+         PASS → Automation-related (proceed to STEP 2)
+     ```
+   
+   - **Check 2: Issue Type**
+     ```
+     required_types = config.jira_integration.ticket_validation.automation_relevance.required_issue_types
+     ticket_type = ticket.fields.issuetype.name
+     
+     if any(t.lower() == ticket_type.lower() for t in required_types):
+         PASS → Automation-related (proceed to STEP 2)
+     ```
+   
+   - **Check 3: Keywords in Text**
+     ```
+     required_keywords = config.jira_integration.ticket_validation.automation_relevance.required_keywords
+     search_fields = config.jira_integration.ticket_validation.automation_relevance.search_fields
+     
+     # Build searchable text
+     searchable_text = ""
+     if "summary" in search_fields:
+         searchable_text += ticket.fields.summary + " "
+     if "description" in search_fields:
+         searchable_text += (ticket.fields.description or "") + " "
+     if "labels" in search_fields:
+         searchable_text += " ".join(ticket.fields.labels) + " "
+     
+     # Case-insensitive keyword search
+     searchable_text_lower = searchable_text.lower()
+     
+     if any(keyword.lower() in searchable_text_lower for keyword in required_keywords):
+         PASS → Automation-related (proceed to STEP 2)
+     ```
+   
+   - **If all checks fail:**
+     ```
+     FAIL → Go to Error Handling (step 5)
+     ```
+
+5. **Error Handling:**
+   
+   **If status validation failed:**
+   ```markdown
+   ❌ Validation Failed: Ticket Status
+   
+   **Ticket:** {ticket_id}
+   **Status:** {actual_status}
+   **Issue:** This ticket appears to be completed/closed and no longer requires work.
+   
+   Coverage analysis is intended for active tickets that need test implementation.
+   
+   **Options:**
+   1. Verify ticket status in Jira
+   2. Use an active ticket instead
+   3. Override validation: `/jira-coverage-analysis {ticket_id} --force`
+   
+   **Note:** The --force flag bypasses validation but may result in analysis of 
+   tickets that don't need test coverage.
+   ```
+   
+   **If automation relevance failed:**
+   ```markdown
+   ❌ Validation Failed: Not Automation-Related
+   
+   **Ticket:** {ticket_id}
+   **Issue:** This ticket doesn't appear to be automation/testing work.
+   
+   **Expected indicators:**
+   - Labels: automation, test-automation, tempest, qa-automation
+   - Issue Type: Test, Testing, QE Task
+   - Keywords: "tempest", "test coverage", "test automation"
+   
+   **Found:**
+   - Labels: {ticket.fields.labels}
+   - Issue Type: {ticket.fields.issuetype.name}
+   - Summary: {ticket.fields.summary}
+   
+   **Options:**
+   1. Verify this is a test automation ticket
+   2. Add appropriate labels in Jira
+   3. Use correct ticket ID
+   4. Override validation: `/jira-coverage-analysis {ticket_id} --force`
+   
+   **Configuration:** Validation criteria can be customized in skills/shared/config.json
+   ```
+
+6. **Batch Processing:**
+   - When processing multiple tickets: `/jira-coverage-analysis TICKET-1 TICKET-2 TICKET-3`
+   - Validate EACH ticket independently
+   - Collect validation failures
+   - Show summary:
+     ```
+     Analyzed: 3 tickets
+     ✅ Passed validation: TICKET-1, TICKET-3
+     ❌ Failed validation: TICKET-2 (Status: Closed)
+     
+     Proceeding with analysis for valid tickets...
+     ```
+
+**Tool Usage:**
+- **Read** (config.json)
+- **String matching** (status, keywords)
+- **List operations** (label checking)
+
+**Output:**
+- ✅ Validation passed → Continue to STEP 2
+- ❌ Validation failed → Show error, exit (or continue with --force)
+
+**Configuration Fallback:**
+- If config file missing/malformed → Skip validation (log warning)
+- If validation disabled in config → Skip validation
+- If MCP unavailable → Skip status check, attempt keyword validation with manual input
+
+---
+
 ### STEP 2: Locate Tempest Repositories
 
 **Actions:**

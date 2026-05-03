@@ -70,6 +70,49 @@ Stakeholders can approve via:
 - **Option 1:** Comment "Approved" (recommended)
 - **Option 2:** React with 👍 (if Jira supports reactions)
 
+## Duplicate Detection
+
+Prevents posting multiple test plans to the same ticket, avoiding noise and confusion.
+
+**How it works:**
+- Checks existing comments for test plan markers ("🤖 Test Automation Plan")
+- If duplicate found, asks user what to do: skip, repost, or view
+- Marks updated plans with [UPDATED] prefix
+
+**User options when duplicate detected:**
+
+1. **Skip** - Keep existing plan, don't post new one
+2. **Repost** - Post updated plan (marks as [UPDATED])
+3. **View** - Show existing plan content first, then decide
+
+**Bypass duplicate check:**
+```bash
+/post-test-plan RHEL-12345 --skip-duplicate-check
+```
+
+**Configuration:**
+Edit `skills/shared/config.json` → `jira_integration.post_test_plan.duplicate_detection`:
+
+```json
+{
+  "duplicate_detection": {
+    "enabled": true,
+    "on_duplicate_found": "ask_user"
+  }
+}
+```
+
+**Behavior modes:**
+- `ask_user` - Show options, let user decide (default)
+- `auto_skip` - Automatically skip if duplicate exists
+- `auto_repost` - Automatically post with [UPDATED] prefix
+
+**Why this matters:**
+- Prevents duplicate comments cluttering the ticket
+- Preserves existing approvals
+- Makes updates explicit with [UPDATED] marker
+- Gives control over when to replace plans
+
 ## Examples
 
 ### Example 1: Complete Workflow
