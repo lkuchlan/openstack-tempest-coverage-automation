@@ -341,3 +341,347 @@ vi ~/.claude/skills/tempest-coverage/config.json
 claude
 > /jira-coverage-analysis --help
 ```
+
+---
+
+## Skills Usage Issues
+
+### Skills Can't Find Tempest Repositories
+
+**Symptom:** "Repository not found" or "Could not locate cinder-tempest-plugin"
+
+**Solutions:**
+
+**1. Update repository paths in config:**
+```bash
+vi ~/.claude/skills/tempest-coverage/config.json
+
+# Update paths to your actual locations:
+{
+  "default_repo_paths": {
+    "tempest": ["~/tempest-workspace/tempest"],
+    "plugins": {
+      "cinder-tempest-plugin": ["~/tempest-workspace/cinder-tempest-plugin"]
+    }
+  }
+}
+```
+
+**2. Verify repositories exist:**
+```bash
+ls $TEMPEST_WORKSPACE/
+# Should show: tempest, cinder-tempest-plugin, manila-tempest-plugin, etc.
+
+ls ~/tempest-workspace/cinder-tempest-plugin/
+# Should show plugin structure
+```
+
+**3. Skills behavior:**
+- Skills will note missing repos in analysis reports
+- Analysis continues with available information
+- Implementation may require manual repository setup
+
+---
+
+### Jira MCP Connection Fails
+
+**Symptom:** "Jira MCP server not available" or manual prompts instead of auto-fetch
+
+**Solutions:**
+
+**1. Check .env file:**
+```bash
+cat .env
+# Should contain:
+# JIRA_URL="https://issues.redhat.com"
+# JIRA_USERNAME="your-email@redhat.com"  
+# JIRA_API_TOKEN="your-token"
+```
+
+**2. Verify MCP server is configured:**
+```bash
+# Check settings.json for mcp-atlassian server
+cat ~/.claude/settings.json | grep -A10 mcpServers
+
+# Should see jira/mcp-atlassian configuration
+```
+
+**3. Test credentials:**
+```bash
+# Try fetching a ticket
+/jira-coverage-analysis TICKET-123
+
+# If credentials invalid, will show error
+```
+
+**4. Fallback to manual input:**
+- Skills work without Jira MCP
+- Just provide ticket details when prompted
+- Same quality output, manual entry
+
+**Note:** See [JIRA_SETUP.md](JIRA_SETUP.md) for detailed MCP configuration.
+
+---
+
+### Posting to Jira Fails (post-test-plan)
+
+**Symptom:** "Failed to post comment" or "Jira is in read-only mode"
+
+**Solutions:**
+
+**1. Check write permissions:**
+```bash
+# MCP server must have write mode enabled
+# Check mcp-atlassian configuration in settings.json
+# READ_ONLY_MODE should be "false" or not set
+```
+
+**2. Verify Jira permissions:**
+- Your Jira account must have comment permissions
+- Check ticket is not locked or archived
+- Verify you can manually comment on the ticket
+
+**3. Use manual fallback:**
+```bash
+/post-test-plan TICKET-123
+
+# If posting fails, skill shows formatted plan:
+# "Here's the formatted plan to copy-paste into Jira"
+
+# Copy the markdown and paste as comment manually
+```
+
+**4. Enable write mode:**
+- See [post-test-plan skill documentation](../skills/post-test-plan/README.md)
+- Update MCP server configuration to allow writes
+- Requires admin access to settings.json
+
+---
+
+### Tox Validation Fails
+
+**Symptom:** `tox -e pep8,py3` reports errors after implementation
+
+**Solutions:**
+
+**1. Review tox output:**
+```bash
+cd ~/tempest-workspace/cinder-tempest-plugin
+tox -e pep8
+
+# Read specific errors:
+# E501 line too long
+# F401 unused import
+# E302 expected 2 blank lines
+```
+
+**2. Common issues and fixes:**
+
+**Import errors:**
+```python
+# ❌ WRONG
+from tempest.common import waiters
+# (not used)
+
+# ✅ FIX: Remove unused import
+```
+
+**Style errors:**
+```python
+# ❌ WRONG - Line too long
+volume = self.volumes_client.create_volume(size=1, name='very-long-volume-name-that-exceeds-the-limit')
+
+# ✅ FIX - Break line
+volume = self.volumes_client.create_volume(
+    size=1,
+    name='very-long-volume-name'
+)
+```
+
+**Test structure:**
+```python
+# ❌ WRONG - Missing decorators
+def test_volume_create(self):
+    pass
+
+# ✅ FIX - Add required decorators
+@decorators.idempotent_id('uuid-here')
+@decorators.attr(type='smoke')
+def test_volume_create(self):
+    pass
+```
+
+**3. Fix violations manually or ask Claude:**
+```bash
+claude
+> The tox validation failed with error "E501 line too long at test_volume.py:42". Please fix it.
+```
+
+**4. Re-run validation:**
+```bash
+tox -e pep8,py3
+# ✅ Should pass after fixes
+```
+
+---
+
+### Validation Always Skipped
+
+**Symptom:** Ticket validation messages like "⚠️ Validation skipped (disabled in config)"
+
+**Solutions:**
+
+**1. Check validation is enabled:**
+```bash
+cat ~/.claude/skills/tempest-coverage/config.json | grep -A5 ticket_validation
+
+# Should show:
+# "enabled": true
+```
+
+**2. Verify MCP is available:**
+- Validation requires Jira MCP to check ticket status
+- Without MCP, validation is automatically skipped
+- Check MCP connection (see above)
+
+**3. Override with --force flag:**
+```bash
+# If you need to analyze a closed ticket or non-automation ticket:
+/jira-coverage-analysis TICKET-123 --force
+
+# This bypasses validation checks
+```
+
+---
+
+### Duplicate Plan Detection Not Working
+
+**Symptom:** Multiple test plans posted to same ticket or no duplicate warning
+
+**Solutions:**
+
+**1. Check duplicate detection is enabled:**
+```bash
+cat ~/.claude/skills/tempest-coverage/config.json | grep -A5 duplicate_detection
+
+# Should show:
+# "enabled": true
+```
+
+**2. Verify comment markers:**
+- Default marker: "🤖 Test Automation Plan"
+- Check if your existing plan uses this marker
+- Customizable in config.json
+
+**3. Check comment fetch limit:**
+- Default checks last 100 comments
+- If plan older than 100 comments, may not be detected
+- Increase `comment_limit` in config if needed
+
+**4. Bypass duplicate check:**
+```bash
+# Force post even if duplicate exists:
+/post-test-plan TICKET-123 --skip-duplicate-check
+```
+
+---
+
+## Security Notes
+
+### Credential Management
+
+**Important security practices:**
+
+**✅ DO:**
+- Store credentials in `.env` file (git-ignored)
+- Use API tokens, NOT passwords
+- Rotate tokens regularly
+- Limit token permissions to minimum required
+- Store `.env` securely (password manager)
+
+**❌ DON'T:**
+- Commit `.env` to git
+- Share API tokens
+- Use personal passwords
+- Store credentials in config.json
+- Paste tokens in public channels
+
+**Checking .env is git-ignored:**
+```bash
+git status | grep .env
+# Should be empty (file ignored)
+
+git check-ignore .env
+# Should output: .env (file is ignored)
+```
+
+**If .env was accidentally committed:**
+```bash
+# IMMEDIATELY rotate the API token in Jira
+# Remove from git history:
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch .env" \
+  --prune-empty --tag-name-filter cat -- --all
+
+# Force push (if you have permission)
+git push origin --force --all
+```
+
+---
+
+### Data Privacy
+
+**Be aware of sensitive data in outputs:**
+
+**Analysis reports:**
+- May contain ticket summaries and descriptions
+- Could include internal project details
+- Review before sharing publicly
+
+**Generated tests:**
+- Use only public OpenStack APIs
+- No proprietary logic or credentials
+- Safe to upstream to OpenStack community
+
+**Git commits:**
+- Commit messages include ticket IDs
+- Co-authored by Claude (visible in git log)
+- Review before pushing to public repos
+
+---
+
+### Git Safety
+
+**Skills follow safe git practices:**
+
+**✅ Skills WILL:**
+- Create feature branches
+- Stage and commit changes
+- Run tox validation before commit
+- Include proper commit messages
+- Add co-authorship attribution
+
+**❌ Skills NEVER:**
+- Auto-push to remote (user controls)
+- Auto-submit to Gerrit (user reviews first)
+- Modify main/master directly (always branch)
+- Force-push (destructive operation)
+- Skip validation (ensures quality)
+
+**User retains control:**
+```bash
+# After implementation, YOU decide when to push:
+cd ~/tempest-workspace/cinder-tempest-plugin
+git log -1  # Review commit
+git diff HEAD~1  # Review changes
+git push origin tempest-coverage-TICKET-123  # YOU push when ready
+```
+
+---
+
+## See Also
+
+- [Configuration Reference](../references/CONFIGURATION.md) - Detailed config options
+- [Tempest Standards](../references/TEMPEST_STANDARDS.md) - Coding standards
+- [Examples](EXAMPLES.md) - Common workflows
+- [Jira Setup](JIRA_SETUP.md) - MCP server configuration
