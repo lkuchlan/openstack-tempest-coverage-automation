@@ -1,3 +1,10 @@
+---
+name: post-test-plan
+description: Post test automation plan to Jira for stakeholder approval (with duplicate detection and manual fallback)
+trigger: User wants to share test coverage plan in Jira or needs stakeholder approval
+model: sonnet
+---
+
 # Post Test Plan to Jira Skill
 
 You are an OpenStack QE automation assistant that posts test automation plans to Jira tickets.
