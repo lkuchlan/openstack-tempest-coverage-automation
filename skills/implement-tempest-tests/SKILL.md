@@ -198,6 +198,15 @@ grep -r "addCleanup" {repo}/tests/
 
 Implement tests following **strict Tempest standards**.
 
+**CRITICAL: Implement focused, targeted tests - not excessive coverage.**
+
+**Coverage Principles:**
+- **Focus on ticket requirements** - Implement what's actually needed
+- **Avoid over-engineering** - Don't test every edge case variation
+- **Prefer 2-3 focused tests** over 5+ granular tests
+- **Each test validates a meaningful scenario** - Not minor variations
+- **Quality over quantity** - Better coverage with fewer, better tests
+
 **Implementation Requirements:**
 
 1. **Use Proper Base Class**
@@ -664,6 +673,8 @@ A successful implementation includes:
 
 ### ✅ DO:
 - Follow discovered patterns exactly
+- Implement focused tests (2-4 tests typically)
+- Focus on ticket requirements (not every edge case)
 - Use Tempest base classes
 - Use Tempest clients (no raw API)
 - Use waiters (no sleep!)
@@ -673,6 +684,9 @@ A successful implementation includes:
 - Provide mandatory final recap
 
 ### ❌ DON'T:
+- Implement excessive test coverage beyond ticket scope
+- Create 5+ tests when 2-3 focused tests are sufficient
+- Test every minor variation or edge case
 - Invent new frameworks
 - Use raw requests/API calls
 - Use time.sleep()

@@ -66,174 +66,6 @@ This skill is for:
 
 ---
 
-### STEP 1.5: Validate Ticket (Ticket Screening)
-
-**CRITICAL: This step validates the ticket is suitable for coverage analysis.**
-
-**Actions:**
-
-1. **Check if validation is enabled:**
-   - Read config: `skills/shared/config.json` → `jira_integration.ticket_validation.enabled`
-   - If disabled (or config missing), skip validation → proceed to STEP 2
-   - If enabled, continue validation checks
-
-2. **Check for --force flag:**
-   - Check if user invoked with `--force` flag: `/jira-coverage-analysis TICKET-123 --force`
-   - If `--force` present AND `allow_force_bypass: true` in config:
-     - Log warning: "⚠️ Validation bypassed with --force flag"
-     - Skip validation → proceed to STEP 2
-   - If no `--force`, continue validation
-
-3. **Status Validation:**
-   
-   **If MCP available:**
-   - Ticket already fetched in STEP 1 includes `status` field
-   - Extract status from ticket: `ticket.fields.status.name`
-   
-   **Validation logic:**
-   ```
-   config_statuses = config.jira_integration.ticket_validation.status_validation.invalid_statuses
-   case_insensitive = config.jira_integration.ticket_validation.status_validation.case_insensitive
-   
-   ticket_status = ticket.fields.status.name
-   
-   if case_insensitive:
-       invalid_match = any(s.lower() == ticket_status.lower() for s in config_statuses)
-   else:
-       invalid_match = ticket_status in config_statuses
-   
-   if invalid_match:
-       FAIL → Go to Error Handling (step 5)
-   ```
-   
-   **If MCP NOT available:**
-   - Skip status validation (can't verify without Jira access)
-   - Continue to automation relevance check
-
-4. **Automation Relevance Validation:**
-   
-   **Validation Strategy:** Use "any_match" approach (ticket passes if ANY criterion matches)
-   
-   - **Check 1: Labels**
-     ```
-     required_labels = config.jira_integration.ticket_validation.automation_relevance.required_labels
-     ticket_labels = ticket.fields.labels
-     
-     if any(label.lower() in [l.lower() for l in required_labels] for label in ticket_labels):
-         PASS → Automation-related (proceed to STEP 2)
-     ```
-   
-   - **Check 2: Issue Type**
-     ```
-     required_types = config.jira_integration.ticket_validation.automation_relevance.required_issue_types
-     ticket_type = ticket.fields.issuetype.name
-     
-     if any(t.lower() == ticket_type.lower() for t in required_types):
-         PASS → Automation-related (proceed to STEP 2)
-     ```
-   
-   - **Check 3: Keywords in Text**
-     ```
-     required_keywords = config.jira_integration.ticket_validation.automation_relevance.required_keywords
-     search_fields = config.jira_integration.ticket_validation.automation_relevance.search_fields
-     
-     # Build searchable text
-     searchable_text = ""
-     if "summary" in search_fields:
-         searchable_text += ticket.fields.summary + " "
-     if "description" in search_fields:
-         searchable_text += (ticket.fields.description or "") + " "
-     if "labels" in search_fields:
-         searchable_text += " ".join(ticket.fields.labels) + " "
-     
-     # Case-insensitive keyword search
-     searchable_text_lower = searchable_text.lower()
-     
-     if any(keyword.lower() in searchable_text_lower for keyword in required_keywords):
-         PASS → Automation-related (proceed to STEP 2)
-     ```
-   
-   - **If all checks fail:**
-     ```
-     FAIL → Go to Error Handling (step 5)
-     ```
-
-5. **Error Handling:**
-   
-   **If status validation failed:**
-   ```markdown
-   ❌ Validation Failed: Ticket Status
-   
-   **Ticket:** {ticket_id}
-   **Status:** {actual_status}
-   **Issue:** This ticket appears to be completed/closed and no longer requires work.
-   
-   Coverage analysis is intended for active tickets that need test implementation.
-   
-   **Options:**
-   1. Verify ticket status in Jira
-   2. Use an active ticket instead
-   3. Override validation: `/jira-coverage-analysis {ticket_id} --force`
-   
-   **Note:** The --force flag bypasses validation but may result in analysis of 
-   tickets that don't need test coverage.
-   ```
-   
-   **If automation relevance failed:**
-   ```markdown
-   ❌ Validation Failed: Not Automation-Related
-   
-   **Ticket:** {ticket_id}
-   **Issue:** This ticket doesn't appear to be automation/testing work.
-   
-   **Expected indicators:**
-   - Labels: automation, test-automation, tempest, qa-automation
-   - Issue Type: Test, Testing, QE Task
-   - Keywords: "tempest", "test coverage", "test automation"
-   
-   **Found:**
-   - Labels: {ticket.fields.labels}
-   - Issue Type: {ticket.fields.issuetype.name}
-   - Summary: {ticket.fields.summary}
-   
-   **Options:**
-   1. Verify this is a test automation ticket
-   2. Add appropriate labels in Jira
-   3. Use correct ticket ID
-   4. Override validation: `/jira-coverage-analysis {ticket_id} --force`
-   
-   **Configuration:** Validation criteria can be customized in skills/shared/config.json
-   ```
-
-6. **Batch Processing:**
-   - When processing multiple tickets: `/jira-coverage-analysis TICKET-1 TICKET-2 TICKET-3`
-   - Validate EACH ticket independently
-   - Collect validation failures
-   - Show summary:
-     ```
-     Analyzed: 3 tickets
-     ✅ Passed validation: TICKET-1, TICKET-3
-     ❌ Failed validation: TICKET-2 (Status: Closed)
-     
-     Proceeding with analysis for valid tickets...
-     ```
-
-**Tool Usage:**
-- **Read** (config.json)
-- **String matching** (status, keywords)
-- **List operations** (label checking)
-
-**Output:**
-- ✅ Validation passed → Continue to STEP 2
-- ❌ Validation failed → Show error, exit (or continue with --force)
-
-**Configuration Fallback:**
-- If config file missing/malformed → Skip validation (log warning)
-- If validation disabled in config → Skip validation
-- If MCP unavailable → Skip status check, attempt keyword validation with manual input
-
----
-
 ### STEP 2: Locate Tempest Repositories
 
 **Actions:**
@@ -318,19 +150,29 @@ git log --since="6 months ago" --name-only -- tests/{service}/
 
 Compare requirements against existing coverage and identify gaps.
 
+**CRITICAL: Be focused and targeted, not excessive.**
+
+**Analysis Principles:**
+- **Focus on the specific issue** - What does the ticket/requirement actually need?
+- **Avoid over-engineering** - Don't test every edge case
+- **Prefer 2-3 focused tests** over 5+ granular variations
+- **Each test validates a meaningful scenario** - Not minor variations
+- **Quality over quantity** - Better to have 2 solid tests than 5 mediocre ones
+
 **Analysis Framework:**
 
 1. **Scenario Coverage:**
    - ✅ What scenarios ARE tested
-   - ❌ What scenarios are MISSING
+   - ❌ What scenarios are MISSING (focus on critical gaps only)
    - ⚠️ What scenarios are PARTIALLY tested
 
-2. **Test Types:**
-   - Positive tests (happy path)
-   - Negative tests (error cases)
-   - RBAC tests (role-based access)
-   - Edge cases
-   - Performance/scale tests
+2. **Test Types (prioritize by relevance):**
+   - Core functionality (what the ticket requires)
+   - Critical scenarios (what would break users)
+   - Only add these if specifically needed:
+     - RBAC tests (if ticket mentions permissions)
+     - Negative tests (if error handling is the issue)
+     - Scale/stress tests (if ticket mentions performance)
 
 3. **Quality Assessment:**
    - Do tests use proper base classes?
@@ -340,18 +182,38 @@ Compare requirements against existing coverage and identify gaps.
    - Are tests independent?
 
 4. **Priority Assessment:**
-   - HIGH: Security, RBAC, data loss scenarios
-   - MEDIUM: Functional gaps, edge cases
-   - LOW: Nice-to-have coverage improvements
+   - HIGH: Tests that directly address the ticket requirement
+   - MEDIUM: Tests for related scenarios mentioned in ticket
+   - LOW: Nice-to-have improvements (often can be skipped)
+
+**Focused Coverage Guidelines:**
+
+**Example - Ticket about concurrent bootable volume creation:**
+- ✅ GOOD: 2 tests
+  - test_concurrent_boot_10_instances (reproduces bug)
+  - test_concurrent_boot_20_instances_stress (validates scale)
+- ❌ TOO MUCH: 5 tests
+  - test_concurrent_boot_10_instances
+  - test_concurrent_boot_20_instances  
+  - test_cinder_api_timeout_during_boot
+  - test_cinder_connection_failure_recovery
+  - test_batch_boot_varying_volume_sizes
+
+**Example - Ticket about RBAC for volume multi-attach:**
+- ✅ GOOD: 3 tests (one per role)
+  - test_volume_multiattach_admin_authorized
+  - test_volume_multiattach_member_authorized
+  - test_volume_multiattach_reader_denied
+- ❌ TOO MUCH: 6+ tests with minor variations
 
 **Tool Usage:**
 - **Read** - Review existing tests
 - **Memory** - Recall patterns from previous analyses
 
 **Output:**
-- Detailed gap list
+- Focused gap list (2-4 tests typically)
 - Priority for each gap
-- Recommendations
+- Justification for each recommended test
 
 ---
 
@@ -471,12 +333,14 @@ Provide actionable recommendations for implementation.
 
 ## 3. Implementation Plan (if gaps exist)
 
-**Gaps identified:** {Number} tests needed
+**Gaps identified:** {Number} focused tests needed (typically 2-4)
 
 **I plan to write:**
-- {N} tests for {feature/scenario} - Priority: HIGH
-- {N} tests for {feature/scenario} - Priority: MEDIUM
-- {N} tests for {feature/scenario} - Priority: LOW
+- `test_{specific_scenario}()` - {Brief what it validates} - Priority: HIGH
+- `test_{specific_scenario}()` - {Brief what it validates} - Priority: HIGH
+- `test_{specific_scenario}()` - {Brief what it validates} - Priority: MEDIUM (if needed)
+
+**Rationale:** {One sentence explaining why these specific tests address the ticket}
 
 ---
 
@@ -533,14 +397,17 @@ A successful analysis includes:
 ## Constraints & Rules
 
 ### ✅ DO:
-- Analyze thoroughly
-- Identify ALL gaps (not just obvious ones)
+- Analyze thoroughly but stay focused on the ticket requirement
+- Identify critical gaps that directly address the issue
+- Recommend 2-4 focused tests (not 5+ granular variations)
 - Assess test quality honestly
-- Provide actionable recommendations
+- Provide actionable, specific recommendations
 - Be fast (analysis only, no code generation)
 - Can analyze multiple tickets in one run
 
 ### ❌ DON'T:
+- Recommend excessive test coverage beyond ticket scope
+- Suggest tests for every edge case or minor variation
 - Implement tests (that's for implement-tempest-tests skill)
 - Run tox or validation
 - Create git branches/commits

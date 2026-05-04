@@ -46,10 +46,17 @@ This skill takes a test coverage analysis (from `/jira-coverage-analysis`) and p
 2. Extract from analysis:
    - Feature description
    - Test methods list (with #, name, what it tests, validates)
+   - **IMPORTANT:** Keep test list focused (typically 2-4 tests)
    - Existing coverage list
    - Implementation location
 3. Populate template with extracted data
 4. Validate format (check table structure)
+
+**Focused Coverage Formatting:**
+- Present 2-4 focused tests (not 5+ granular variations)
+- Each row describes a meaningful test scenario
+- Avoid minor variations (e.g., "10 instances" vs "20 instances" can be one test with parameter)
+- Keep "What It Tests" column specific to the ticket requirement
 
 **Template Structure:**
 ```
