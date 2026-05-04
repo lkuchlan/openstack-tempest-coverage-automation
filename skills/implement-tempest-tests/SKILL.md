@@ -77,6 +77,127 @@ Requirements:
 
 ---
 
+### STEP 1.5: Check for Jira Approval (If Ticket Provided)
+
+**CRITICAL: If implementing from a Jira ticket, check if test plan was approved before proceeding.**
+
+**Actions:**
+
+1. **Check if ticket ID provided:**
+   - If no ticket ID (manual requirements) → Skip approval check, proceed to STEP 2
+   - If ticket ID provided (e.g., OSPRH-13921) → Continue approval check
+
+2. **Fetch Jira comments:**
+   ```bash
+   Use Jira API (or MCP if available):
+   GET /rest/api/2/issue/{ticket_id}/comment
+   
+   Extract all comments with:
+   - comment.body (text content)
+   - comment.created (timestamp)
+   - comment.author.displayName (who posted)
+   ```
+
+3. **Search for test plan comment:**
+   
+   Look for test plan markers in comments:
+   - "🤖 Test Automation Plan"
+   - "Test Automation Plan"
+   - "Proposed Tests"
+   
+   ```python
+   plan_comment = None
+   plan_posted_date = None
+   
+   for comment in comments:
+       if "🤖 Test Automation Plan" in comment.body or "Test Automation Plan" in comment.body:
+           plan_comment = comment
+           plan_posted_date = comment.created
+           break
+   ```
+
+4. **Search for approval comment:**
+   
+   Approval keywords: `["Approved", "LGTM", "looks good", "approved", "lgtm"]`
+   
+   ```python
+   approval_found = False
+   approval_comment = None
+   
+   for comment in comments:
+       comment_text = comment.body.lower()
+       comment_date = comment.created
+       
+       # Check if comment contains approval keyword
+       for keyword in approval_keywords:
+           if keyword.lower() in comment_text:
+               # Verify comment is AFTER test plan (if plan exists)
+               if plan_posted_date is None or comment_date > plan_posted_date:
+                   approval_found = True
+                   approval_comment = comment
+                   break
+       
+       if approval_found:
+           break
+   ```
+
+5. **Handle approval status:**
+
+   **If approval FOUND:**
+   ```markdown
+   ✅ Test plan approved by {author} on {date}
+   
+   Comment: "{approval_comment_snippet}"
+   
+   Proceeding with implementation...
+   ```
+   → Continue to STEP 2
+
+   **If approval NOT FOUND:**
+   ```markdown
+   ⚠️ No approval found for test plan on {ticket_id}
+   
+   Test plan posted: {plan_posted_date} (if exists)
+   No approval comment found with keywords: "Approved", "LGTM", "looks good"
+   
+   **Options:**
+   1. **Wait for approval** - Stop here, user should get approval first
+   2. **Proceed anyway** - Implement tests without approval (use --skip-approval flag)
+   3. **Manual confirmation** - Ask user if they have verbal/offline approval
+   
+   What would you like to do?
+   ```
+   
+   Use **AskUserQuestion** to prompt:
+   - "Wait" → Stop execution, inform user to get approval first
+   - "Proceed" → Log warning, continue to STEP 2
+   - "I have approval" → Log note, continue to STEP 2
+
+6. **Support --skip-approval flag:**
+   
+   If user runs: `/implement-tempest-tests TICKET-123 --skip-approval`
+   
+   → Skip approval check entirely, proceed to STEP 2
+   
+   Log: "⚠️ Approval check skipped (--skip-approval flag used)"
+
+**Tool Usage:**
+- **Bash** (curl to Jira API with credentials from env)
+- **Read** (config for approval keywords)
+- **AskUserQuestion** (if no approval found)
+
+**Output:**
+- ✅ Approval confirmed → Continue
+- ⚠️ No approval, user chose proceed → Continue with warning
+- 🛑 No approval, user chose wait → STOP execution
+
+**Error Handling:**
+- If Jira fetch fails → Warn user, ask if they want to proceed anyway
+- If no test plan comment found → Note it, still check for approval keywords
+- If config missing → Use default approval keywords
+
+---
+
 ### STEP 2: Locate Tempest Repositories
 
 **Actions:**
@@ -644,6 +765,7 @@ END OF RECAP
 | Phase | Primary Tools | Purpose |
 |-------|---------------|---------|
 | Requirements | jira_get_issue, Read, Memory | Get requirements |
+| Approval Check | Bash (curl Jira API), AskUserQuestion | Verify test plan approval |
 | Repo Discovery | Bash (find, git) | Locate repository |
 | Pattern Discovery | Agent (Explore), Read | Find implementation patterns |
 | Planning | EnterPlanMode (if complex) | Get user approval |
@@ -659,13 +781,14 @@ END OF RECAP
 
 A successful implementation includes:
 1. ✅ Requirements understood
-2. ✅ Patterns discovered and followed
-3. ✅ Tests implemented following upstream standards
-4. ✅ All validation passing (pep8, py3)
-5. ✅ Git branch created with proper commit
-6. ✅ Mandatory final recap provided
-7. ✅ Code ready for review (not auto-pushed)
-8. ✅ Patterns saved to memory
+2. ✅ Test plan approved (if Jira ticket) OR user confirmed proceed
+3. ✅ Patterns discovered and followed
+4. ✅ Tests implemented following upstream standards
+5. ✅ All validation passing (pep8, py3)
+6. ✅ Git branch created with proper commit
+7. ✅ Mandatory final recap provided
+8. ✅ Code ready for review (not auto-pushed)
+9. ✅ Patterns saved to memory
 
 ---
 
@@ -713,14 +836,25 @@ A successful implementation includes:
 ```
 Implementation skill uses analysis findings.
 
-**Workflow 2: Direct Implementation**
+**Workflow 2: Direct Implementation (with approval check)**
 ```bash
-# One command
-/implement-tempest-tests RHEL-12345
-```
-Implementation skill does quick analysis internally, then implements.
+# Post test plan, get approval, then implement
+/post-test-plan RHEL-12345
+# (Wait for stakeholder approval in Jira)
 
-**Workflow 3: Manual Requirements**
+/implement-tempest-tests RHEL-12345
+# Checks for approval automatically, proceeds if approved
+```
+Recommended workflow for stakeholder buy-in.
+
+**Workflow 3: Direct Implementation (skip approval)**
+```bash
+# One command (no approval check)
+/implement-tempest-tests RHEL-12345 --skip-approval
+```
+Use when you have offline/verbal approval or implementing without formal process.
+
+**Workflow 4: Manual Requirements**
 ```bash
 /implement-tempest-tests
 
