@@ -88,6 +88,20 @@ else
     fi
 fi
 
+# Post test plan skill
+if [ -d "$REPO_ROOT/skills/post-test-plan" ]; then
+    ln -sf "$REPO_ROOT/skills/post-test-plan" "$SKILLS_DIR/post-test-plan"
+    echo -e "${GREEN}✓${NC} post-test-plan"
+else
+    # Check .claude/skills location (during development)
+    if [ -d "$REPO_ROOT/.claude/skills/post-test-plan" ]; then
+        ln -sf "$REPO_ROOT/.claude/skills/post-test-plan" "$SKILLS_DIR/post-test-plan"
+        echo -e "${GREEN}✓${NC} post-test-plan"
+    else
+        echo -e "${YELLOW}⚠️  post-test-plan not found${NC}"
+    fi
+fi
+
 # Shared config
 if [ -d "$REPO_ROOT/skills/shared" ]; then
     ln -sf "$REPO_ROOT/skills/shared" "$SKILLS_DIR/tempest-coverage"
@@ -166,6 +180,13 @@ else
     VALIDATION_OK=false
 fi
 
+if [ -d "$SKILLS_DIR/post-test-plan" ]; then
+    echo -e "${GREEN}✓${NC} post-test-plan skill installed"
+else
+    echo -e "${RED}✗${NC} post-test-plan skill NOT found"
+    VALIDATION_OK=false
+fi
+
 if [ -d "$SKILLS_DIR/tempest-coverage" ]; then
     echo -e "${GREEN}✓${NC} tempest-coverage (shared config) installed"
 else
@@ -200,6 +221,7 @@ echo ""
 echo -e "${YELLOW}3. Test the skills:${NC}"
 echo -e "   claude"
 echo -e "   > ${BLUE}/jira-coverage-analysis --help${NC}"
+echo -e "   > ${BLUE}/post-test-plan --help${NC}"
 echo -e "   > ${BLUE}/implement-tempest-tests --help${NC}"
 echo ""
 
