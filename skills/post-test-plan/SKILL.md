@@ -73,15 +73,15 @@ h2. 🤖 Test Automation Plan
 
 h3. Proposed Tests
 
-|| # || Test Method || What It Tests || Validates ||
-| 1.1 | {{test_name_1}} | {description} | {validation} |
-| 1.2 | {{test_name_2}} | {description} | {validation} |
+|| Test Method || What It Tests || Validates ||
+| {{test_name_1}} | {description} | {validation} |
+| {{test_name_2}} | {description} | {validation} |
 ...
 
 h3. Existing Coverage (No Changes)
 
-|| Test || Coverage || Status ||
-| {{existing_test_1}} | {coverage} | ✅ Covered |
+|| Test || Repository || Coverage || Status ||
+| {{existing_test_1}} | {plugin-name}/{path}/{file.py} ({branch}) | {coverage} | ✅ Covered |
 ...
 
 h3. ✅ Approval Required
@@ -91,7 +91,6 @@ h3. ✅ Approval Required
 _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 
 *Implementation:* {file_location}
-*Validation:* {{tox -e pep8,py3}} before commit
 ```
 
 **Tool Usage:**

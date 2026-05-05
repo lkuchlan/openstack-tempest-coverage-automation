@@ -4,12 +4,12 @@ h2. 🤖 Test Automation Plan
 
 h3. Proposed Tests
 
-|| # || Test Method || What It Tests || Validates ||
+|| Test Method || What It Tests || Validates ||
 {{TESTS_TABLE_ROWS}}
 
 h3. Existing Coverage (No Changes)
 
-|| Test || Coverage || Status ||
+|| Test || Repository || Coverage || Status ||
 {{EXISTING_TESTS_TABLE_ROWS}}
 
 h3. ✅ Approval Required
