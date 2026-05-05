@@ -144,6 +144,108 @@ git log --since="6 months ago" --name-only -- tests/{service}/
 
 ---
 
+### STEP 3.5: Check Remote Repository State (CRITICAL - Prevent False Coverage Reports)
+
+**CRITICAL: Distinguish between merged tests and in-development tests.**
+
+**Problem:** Tests found locally may not be merged upstream yet. Reporting them as "existing coverage" misleads stakeholders.
+
+**Actions:**
+
+For each test file found in STEP 3, verify its remote repository state:
+
+**Determine Default Branch:**
+```bash
+cd {repo}
+git remote show origin | grep "HEAD branch" | awk '{print $NF}'
+# Returns: master or main
+```
+
+**Check if test file exists on remote default branch:**
+```bash
+# Fetch latest remote state (don't pull)
+git fetch origin
+
+# Check if file exists on origin/master (or origin/main)
+git ls-tree -r origin/{default_branch} --name-only | grep {test_file_path}
+
+# If found: FILE EXISTS ON REMOTE
+# If not found: FILE IS LOCAL ONLY
+```
+
+**For files that exist on remote, check if specific test methods are on remote:**
+```bash
+# Show file content from remote
+git show origin/{default_branch}:{relative_file_path} | grep "def test_{method_name}"
+
+# If found: TEST METHOD EXISTS ON REMOTE (merged)
+# If not found: TEST METHOD IS LOCAL ONLY (in development)
+```
+
+**Categorize Each Test:**
+
+1. **✅ MERGED (Existing Coverage):**
+   - Test file exists on origin/master or origin/main
+   - Test method exists in remote version
+   - Report as "existing coverage"
+
+2. **❌ IGNORE (Not Merged):**
+   - Test file exists locally but not on remote
+   - OR test file exists on remote but method doesn't
+   - OR on a feature branch not merged to default branch
+   - OR has uncommitted changes
+   - **COMPLETELY IGNORE - Do not mention anywhere in report**
+   - Act as if these tests don't exist
+
+**Detection Commands:**
+
+```bash
+cd {repo}
+
+# Fetch latest (don't pull to avoid conflicts)
+git fetch origin
+
+# Get default branch name
+DEFAULT_BRANCH=$(git remote show origin | grep "HEAD branch" | awk '{print $NF}')
+
+# For each test file found:
+FILE_PATH="{relative_path_to_test_file}"
+
+# Check if file exists on remote default branch
+if git ls-tree -r origin/$DEFAULT_BRANCH --name-only | grep -q "^${FILE_PATH}$"; then
+    echo "File exists on remote"
+    
+    # Check if specific method exists on remote
+    if git show origin/$DEFAULT_BRANCH:$FILE_PATH | grep -q "def test_{method_name}"; then
+        echo "✅ MERGED - Test exists on origin/$DEFAULT_BRANCH"
+        CATEGORY="merged"
+    else
+        echo "⚠️ IN DEVELOPMENT - File on remote but method is local"
+        CATEGORY="in_development"
+    fi
+else
+    echo "⚠️ IN DEVELOPMENT - File not on remote"
+    CATEGORY="in_development"
+fi
+
+# Check for uncommitted changes
+if git diff --name-only | grep -q "^${FILE_PATH}$"; then
+    echo "🔧 LOCAL ONLY - Uncommitted changes"
+    CATEGORY="local_uncommitted"
+fi
+```
+
+**Tool Usage:**
+- **Bash** - git fetch, git ls-tree, git show
+- **String parsing** - filter results
+
+**Output:**
+- **Merged tests only** (exist on origin/master or origin/main)
+- All other tests (local branches, feature branches, uncommitted) are completely ignored
+- Only merged tests reported in analysis
+
+---
+
 ### STEP 4: Gap Analysis (CORE OF THIS SKILL)
 
 **Actions:**
@@ -309,25 +411,27 @@ Provide actionable recommendations for implementation.
 
 ## 1. Coverage Status
 
-{Choose one:}
-✅ **COMPLETE** - Tests already exist
+{Choose one based on MERGED tests only:}
+✅ **COMPLETE** - Tests already exist upstream
 ⚠️ **PARTIAL** - Some coverage exists, gaps identified  
-❌ **MISSING** - No tests found
+❌ **MISSING** - No tests found upstream
 
 ---
 
 ## 2. Existing Tests (if coverage exists)
 
-**Repository:** `{service}-tempest-plugin` (in your configured Tempest path)
+{Only include tests that exist on origin/master or origin/main}
+{Completely ignore tests on local branches, feature branches, or uncommitted}
+
+**Repository:** `{service}-tempest-plugin` (origin/{default_branch})
 
 **File:** `{plugin}/tests/{path}/test_{feature}.py`
 
 **Tests found:**
 - `test_{scenario_1}()` - {Brief what it tests}
 - `test_{scenario_2}()` - {Brief what it tests}
-- `test_{scenario_3}()` - {Brief what it tests}
 
-**Covers:** {One-line summary - e.g., "Basic CRUD, positive flows, concurrent operations"}
+**Covers:** {One-line summary - e.g., "Basic CRUD, positive flows"}
 
 ---
 
@@ -374,6 +478,7 @@ END OF ANALYSIS REPORT
 | Ticket Fetch | jira_get_issue, jira_search, Read | Get requirements |
 | Repo Discovery | Bash (find) | Locate repositories |
 | Coverage Discovery | Agent (Explore), Read, Bash | Find existing tests |
+| Remote State Check | Bash (git fetch, git ls-tree, git show) | Verify tests exist on origin/master or origin/main |
 | Gap Analysis | Read, comparison logic | Identify missing coverage |
 | Effort Estimation | Analysis, patterns | Estimate hours |
 | Recommendations | Pattern matching | Implementation guidance |
@@ -385,12 +490,13 @@ END OF ANALYSIS REPORT
 
 A successful analysis includes:
 1. ✅ Requirements clearly extracted
-2. ✅ Existing coverage identified (or confirmed none exists)
-3. ✅ Gaps clearly documented with priority
-4. ✅ Effort estimated for each gap
-5. ✅ Implementation recommendations provided
-6. ✅ Structured report generated
-7. ✅ Analysis complete in < 5 minutes (fast, no implementation)
+2. ✅ Existing coverage identified (MERGED tests only, from origin/master or origin/main)
+3. ✅ Local/in-development tests completely ignored (not mentioned in report)
+4. ✅ Gaps clearly documented with priority
+5. ✅ Effort estimated for each gap
+6. ✅ Implementation recommendations provided
+7. ✅ Structured report generated
+8. ✅ Analysis complete in < 5 minutes (fast, no implementation)
 
 ---
 
@@ -398,6 +504,9 @@ A successful analysis includes:
 
 ### ✅ DO:
 - Analyze thoroughly but stay focused on the ticket requirement
+- **CRITICAL:** Check remote repository state (origin/master or origin/main)
+- Only report tests that exist on remote default branch
+- Completely ignore tests on local/feature branches or uncommitted
 - Identify critical gaps that directly address the issue
 - Recommend 2-4 focused tests (not 5+ granular variations)
 - Assess test quality honestly
@@ -408,6 +517,10 @@ A successful analysis includes:
 ### ❌ DON'T:
 - Recommend excessive test coverage beyond ticket scope
 - Suggest tests for every edge case or minor variation
+- **CRITICAL:** Report tests from local branches as "existing coverage"
+- Include in-development tests in analysis report
+- Include uncommitted tests in analysis report
+- Mention tests that aren't on origin/master or origin/main
 - Implement tests (that's for implement-tempest-tests skill)
 - Run tox or validation
 - Create git branches/commits
@@ -490,13 +603,15 @@ The skill uses shared configuration:
 
 **Every execution provides:**
 - ✅ Structured analysis report
+- ✅ Only merged tests (origin/master or origin/main) reported as existing coverage
+- ✅ Local/in-development tests completely ignored
 - ✅ Clear gap identification
 - ✅ Priority assessment
 - ✅ Effort estimation
 - ✅ Implementation recommendations
 - ✅ Fast execution (< 5 minutes)
 - ✅ No code implementation
-- ✅ No git operations
+- ✅ Git operations limited to read-only (fetch, ls-tree, show)
 
 ---
 

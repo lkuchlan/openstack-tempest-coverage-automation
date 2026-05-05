@@ -52,9 +52,12 @@ This skill takes a test coverage analysis (from `/jira-coverage-analysis`) and p
 1. Read template: `templates/jira_plan_format1.md`
 2. Extract from analysis:
    - Feature description
-   - Test methods list (with #, name, what it tests, validates)
+   - Test methods list (name, what it tests, validates)
    - **IMPORTANT:** Keep test list focused (typically 2-4 tests)
-   - Existing coverage list
+   - **CRITICAL:** Only include MERGED tests in "Existing Coverage"
+     - Tests must exist on origin/master or origin/main
+     - DO NOT include in-development tests (local branches)
+     - DO NOT include uncommitted tests
    - Implementation location
 3. Populate template with extracted data
 4. Validate format (check table structure)
@@ -80,8 +83,12 @@ h3. Proposed Tests
 
 h3. Existing Coverage (No Changes)
 
+**CRITICAL:** Only include tests merged on origin/master or origin/main.
+DO NOT include in-development tests (local branches) - they mislead stakeholders.
+
 || Test || Repository || Coverage || Status ||
-| {{existing_test_1}} | {plugin-name}/{path}/{file.py} ({branch}) | {coverage} | ✅ Covered |
+| {{existing_test_1}} | {plugin-name}/{path}/{file.py} (origin/master) | {coverage} | ✅ Covered |
+| {{existing_test_2}} | {plugin-name}/{path}/{file.py} (origin/main) | {coverage} | ✅ Covered |
 ...
 
 h3. ✅ Approval Required
@@ -92,6 +99,11 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 
 *Implementation:* {file_location}
 ```
+
+**Repository Column Format:**
+- **Merged tests:** `{plugin-name}/{path}/{file.py} (origin/master)` or `(origin/main)`
+- **NEVER include:** Tests on feature branches, local branches, or uncommitted changes
+- **Verification:** Each test must be verified with `git ls-tree origin/{default_branch}` before including
 
 **Tool Usage:**
 - Read (template file)
@@ -313,6 +325,9 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 ### ✅ DO:
 - Use Format 1 (detailed tables) as default
 - Check for existing analysis first
+- **CRITICAL:** Only include MERGED tests in "Existing Coverage"
+- Verify each test exists on origin/master or origin/main before including
+- Show branch name in Repository column (origin/master or origin/main)
 - Provide fallback if Jira write not available
 - Save metadata for tracking
 - Keep format clean (no hours column, no redundant ticket summary)
@@ -324,6 +339,9 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 - Don't force Jira posting if user prefers manual
 - Don't skip approval section
 - Don't include effort estimates in main table
+- **CRITICAL:** Don't include in-development tests in "Existing Coverage"
+- Don't include tests from local/feature branches as "existing"
+- Don't include uncommitted tests as "existing coverage"
 
 ---
 
