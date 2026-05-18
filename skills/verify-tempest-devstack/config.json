@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Configuration for DevStack Tempest Verification Skill",
+
+  "ssh": {
+    "description": "SSH connection settings for the DevStack VM",
+    "host": "env:DEVSTACK_HOST",
+    "user": "env:DEVSTACK_USER",
+    "key_path": "env:DEVSTACK_SSH_KEY",
+    "port": 22,
+    "connect_timeout": 10,
+    "options": "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+  },
+
+  "devstack": {
+    "description": "DevStack deployment settings",
+    "git_url": "https://opendev.org/openstack/devstack.git",
+    "branch": "master",
+    "deploy_timeout": 3600,
+    "install_path": "/opt/stack/devstack",
+    "logs_path": "/opt/stack/logs",
+    "admin_password": "env:DEVSTACK_ADMIN_PASSWORD",
+    "database_password": "env:DEVSTACK_DB_PASSWORD",
+    "rabbit_password": "env:DEVSTACK_RABBIT_PASSWORD",
+    "service_password": "env:DEVSTACK_SERVICE_PASSWORD",
+    "reclone": true
+  },
+
+  "vm_lock": {
+    "description": "Prevents concurrent tickets from clobbering each other's DevStack deployment",
+    "enabled": true,
+    "lock_path": "/opt/stack/.devstack-lock",
+    "stale_timeout_hours": 4
+  },
+
+  "deployment_cache": {
+    "description": "Reuse existing DevStack if the required services are already deployed",
+    "enabled": true,
+    "fingerprint_path": "/opt/stack/.devstack-topology",
+    "verify_services_running": true
+  },
+
+  "service_tiers": {
+    "description": "Service tiers determine which services to deploy based on test requirements",
+    "core": {
+      "description": "Always deployed — minimum for any OpenStack API call",
+      "services": "key,placement-api"
+    },
+    "full_triggers": {
+      "description": "Test code patterns that require full tier (Nova, Neutron, Glance)",
+      "patterns": ["servers_client", "create_server", "networks_client", "create_network", "create_port", "create_subnet", "attach_volume", "detach_volume", "create_floating_ip"]
+    }
+  },
+
+  "service_devstack_mapping": {
+    "description": "Maps OpenStack services to DevStack service names and plugins. api_only_services = minimal for API tests. full_services = includes backends and dependent services.",
+    "cinder": {
+      "api_only_services": "c-api,c-vol,c-sch",
+      "full_services": "c-api,c-vol,c-sch,c-bak",
+      "plugin": null,
+      "extra_config": ["CINDER_ENABLED_BACKENDS=lvm:lvmdriver-1"],
+      "requires_for_full": ["nova", "glance", "neutron"]
+    },
+    "manila": {
+      "api_only_services": "manila,m-api,m-sch,m-shr",
+      "full_services": "manila,m-api,m-sch,m-shr,m-dat",
+      "plugin": "enable_plugin manila https://opendev.org/openstack/manila",
+      "extra_config": [],
+      "requires_for_full": ["neutron"]
+    },
+    "glance": {
+      "api_only_services": "g-api",
+      "full_services": "g-api",
+      "plugin": null,
+      "extra_config": [],
+      "requires_for_full": []
+    },
+    "barbican": {
+      "api_only_services": "barbican",
+      "full_services": "barbican",
+      "plugin": "enable_plugin barbican https://opendev.org/openstack/barbican",
+      "extra_config": [],
+      "requires_for_full": []
+    },
+    "neutron": {
+      "api_only_services": "q-svc",
+      "full_services": "q-svc,q-agt,q-dhcp,q-l3,q-meta",
+      "plugin": null,
+      "extra_config": [],
+      "requires_for_full": []
+    },
+    "nova": {
+      "api_only_services": "n-api,n-cond,n-sch",
+      "full_services": "n-api,n-cpu,n-cond,n-sch",
+      "plugin": null,
+      "extra_config": [],
+      "requires_for_full": ["glance", "neutron"]
+    },
+    "keystone": {
+      "api_only_services": "key",
+      "full_services": "key",
+      "plugin": null,
+      "extra_config": [],
+      "requires_for_full": []
+    },
+    "swift": {
+      "api_only_services": "s-proxy,s-object,s-container,s-account",
+      "full_services": "s-proxy,s-object,s-container,s-account",
+      "plugin": null,
+      "extra_config": ["SWIFT_HASH=secrethash", "SWIFT_REPLICAS=1"],
+      "requires_for_full": []
+    }
+  },
+
+  "feasibility": {
+    "description": "Checks whether the test environment can be deployed on DevStack",
+    "unsupported_backends": ["ceph", "netapp", "pure", "dell_emc", "hpe_3par", "ibm_storwize", "huawei", "hitachi", "infinidat"],
+    "unsupported_features": ["live_migration", "sr-iov", "dpdk", "gpu", "vtpm", "pci_passthrough"],
+    "multi_node_patterns": ["min_compute_nodes", "CONF.compute.min_compute_nodes"],
+    "backend_config_patterns": ["CONF.volume.backend_name", "CONF.share.backend_names", "CONF.volume.vendor_name"]
+  },
+
+  "tempest_plugin_repos": {
+    "description": "Git URLs for Tempest plugin repositories",
+    "cinder-tempest-plugin": "https://opendev.org/openstack/cinder-tempest-plugin.git",
+    "manila-tempest-plugin": "https://opendev.org/openstack/manila-tempest-plugin.git",
+    "glance-tempest-plugin": "https://opendev.org/openstack/glance-tempest-plugin.git",
+    "barbican-tempest-plugin": "https://opendev.org/openstack/barbican-tempest-plugin.git",
+    "keystone-tempest-plugin": "https://opendev.org/openstack/keystone-tempest-plugin.git",
+    "neutron-tempest-plugin": "https://opendev.org/openstack/neutron-tempest-plugin.git"
+  },
+
+  "test_execution": {
+    "description": "Test execution settings on DevStack",
+    "timeout": 1800,
+    "concurrency": 1,
+    "collect_subunit": true,
+    "tempest_install_path": "/opt/stack/tempest"
+  },
+
+  "retry": {
+    "description": "Feedback loop retry settings",
+    "max_retries": 1,
+    "feedback_format": "structured_json"
+  },
+
+  "log_collection": {
+    "description": "Log collection settings after test execution",
+    "enabled": true,
+    "services_to_collect": ["nova", "cinder", "neutron", "glance", "keystone", "manila"],
+    "max_log_lines": 200,
+    "collect_journald": true,
+    "collect_devstack_log": true,
+    "local_storage_path": "~/.claude/orchestrator-state/verifications"
+  },
+
+  "cleanup": {
+    "description": "Post-verification cleanup settings",
+    "cleanup_after_verification": false,
+    "unstack_on_failure": false
+  }
+}

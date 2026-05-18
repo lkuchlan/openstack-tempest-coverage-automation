@@ -20,9 +20,11 @@ When working in this repository, you are helping users:
 ```
 openstack-tempest-coverage-automation/
 ├── skills/
+│   ├── orchestrator/               # Pipeline orchestrator (ties all skills together)
 │   ├── jira-coverage-analysis/     # Analysis-only skill (fast, read-only)
 │   ├── post-test-plan/             # Post test plans to Jira (with fallback)
 │   ├── implement-tempest-tests/    # Implementation skill (with validation)
+│   ├── verify-tempest-devstack/   # DevStack verification skill (SSH + real tests)
 │   └── shared/                     # Shared configuration and templates
 ├── docs/                           # User guides
 ├── references/                     # Reference documentation
@@ -33,6 +35,24 @@ openstack-tempest-coverage-automation/
 ---
 
 ## Skills Available
+
+### /tempest-coverage-orchestrator
+
+Pipeline orchestrator that ties all skills into an automated workflow. Manages tickets through stages: Discovery → Analysis → Post Plan → Approval Monitoring.
+
+**Use for:** End-to-end pipeline execution • Batch ticket processing • Approval monitoring • Pipeline status checks
+
+**Key features:** File-based state management • Idempotent stages (safe to re-run) • Crash recovery • Dry-run mode • JQL-based ticket discovery
+
+**State:** `~/.claude/orchestrator-state/pipeline-state.json`
+
+**Usage:**
+```bash
+/tempest-coverage-orchestrator TICKET-ID            # Process single ticket
+/tempest-coverage-orchestrator --jql "..."           # Discover via JQL
+/tempest-coverage-orchestrator --status              # Show all tracked tickets
+/tempest-coverage-orchestrator --dry-run --jql "..."  # Preview without acting
+```
 
 ### /jira-coverage-analysis
 
@@ -63,6 +83,18 @@ Implement Tempest tests from requirements with automatic validation. Creates bra
 **Key features:** Pattern discovery • Strict standards enforcement • Tox validation • Git workflow automation
 
 → [Full documentation](skills/implement-tempest-tests/README.md)
+
+### /verify-tempest-devstack
+
+Verify Tempest tests against a real DevStack deployment. Deploys DevStack from scratch on a VM, installs tests, runs them against real OpenStack APIs, and reports results.
+
+**Use for:** Post-implementation verification • Real OpenStack API testing • Integration validation
+
+**Key features:** SSH-based remote execution • Automated DevStack deployment • Structured failure feedback for retry loops • Coverage measurement
+
+**Configuration:** `skills/verify-tempest-devstack/config.json` (SSH + DevStack settings)
+
+→ [Full documentation](skills/verify-tempest-devstack/README.md)
 
 ---
 
@@ -135,6 +167,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 /jira-coverage-analysis TICKET-123
 /post-test-plan TICKET-123
 /implement-tempest-tests TICKET-123
+/verify-tempest-devstack TICKET-123
 ```
 
 → Setup: [docs/INSTALLATION.md](docs/INSTALLATION.md) • Workflows: [docs/EXAMPLES.md](docs/EXAMPLES.md)

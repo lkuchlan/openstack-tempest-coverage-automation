@@ -15,17 +15,18 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 **Before:** 4-6 hours to analyze coverage gaps, find patterns, implement tests, and validate  
 **After:** 5-10 minutes with automated analysis, pattern discovery, and quality enforcement
 
-**Example workflow:**
+**Manual workflow (per ticket):**
 ```bash
-# Step 1: Analyze ticket for coverage gaps (2 minutes)
-/jira-coverage-analysis OSPRH-22613
+/jira-coverage-analysis OSPRH-22613   # Analyze gaps
+/post-test-plan OSPRH-22613           # Post plan for approval
+/implement-tempest-tests OSPRH-22613  # Implement after approval
+/verify-tempest-devstack OSPRH-22613  # Verify on real OpenStack
+```
 
-# Review analysis report with priorities and effort estimates
-
-# Step 2: Implement approved tests (5 minutes)
-/implement-tempest-tests OSPRH-22613
-
-# Tests generated, validated with tox, committed to branch
+**Automated workflow (batch):**
+```bash
+/orchestrator --jql "project = OSPRH AND component = Cinder AND labels = needs-tempest-coverage"
+# Discovers tickets → analyzes → posts plans → monitors approval → implements → verifies
 ```
 
 ---
@@ -119,7 +120,7 @@ User Reviews Analysis Report
 Tests Ready for Review & Push
 ```
 
-### Two Specialized Skills
+### Five Skills
 
 **1. `/jira-coverage-analysis`** - Analysis Only (Fast)
 - **Purpose:** Identify test coverage gaps
@@ -127,11 +128,29 @@ Tests Ready for Review & Push
 - **Output:** Structured analysis report with priorities
 - **Use for:** Sprint planning, effort estimation, gap audits
 
-**2. `/implement-tempest-tests`** - Implementation + Validation
+**2. `/post-test-plan`** - Stakeholder Approval
+- **Purpose:** Post test plan to Jira for review before implementing
+- **Speed:** < 1 minute
+- **Output:** Jira comment with duplicate detection
+- **Use for:** Getting stakeholder sign-off before writing tests
+
+**3. `/implement-tempest-tests`** - Implementation + Validation
 - **Purpose:** Generate production-ready tests
 - **Speed:** 5-10 minutes (with validation)
 - **Output:** Validated code + git commit + recap
 - **Use for:** Implementing approved tests
+
+**4. `/verify-tempest-devstack`** - Real-world Verification
+- **Purpose:** Verify tests on a real DevStack OpenStack environment
+- **Speed:** 35-90 minutes (includes DevStack deployment)
+- **Output:** Verification report with pass/fail results
+- **Use for:** Validating tests against real OpenStack APIs before pushing
+
+**5. `/orchestrator`** - Full Pipeline Automation
+- **Purpose:** Automate the entire pipeline end-to-end
+- **Speed:** Hours to days (poll-based approval + verification)
+- **Output:** State-tracked pipeline with Jira updates
+- **Use for:** Batch ticket processing, automated workflow
 
 ### Shared Configuration
 
@@ -185,10 +204,13 @@ cd openstack-tempest-coverage-automation
 # Create skills directory
 mkdir -p ~/.claude/skills
 
-# Create symlinks
-ln -sf "$(pwd)/.claude/skills/jira-coverage-analysis" ~/.claude/skills/jira-coverage-analysis
-ln -sf "$(pwd)/.claude/skills/implement-tempest-tests" ~/.claude/skills/implement-tempest-tests
-ln -sf "$(pwd)/.claude/skills/tempest-coverage" ~/.claude/skills/tempest-coverage
+# Create symlinks (all 5 skills)
+ln -sf "$(pwd)/skills/jira-coverage-analysis" ~/.claude/skills/jira-coverage-analysis
+ln -sf "$(pwd)/skills/implement-tempest-tests" ~/.claude/skills/implement-tempest-tests
+ln -sf "$(pwd)/skills/post-test-plan" ~/.claude/skills/post-test-plan
+ln -sf "$(pwd)/skills/orchestrator" ~/.claude/skills/orchestrator
+ln -sf "$(pwd)/skills/verify-tempest-devstack" ~/.claude/skills/verify-tempest-devstack
+ln -sf "$(pwd)/skills/shared" ~/.claude/skills/tempest-coverage
 
 # Copy credential template
 cp examples/.env.example .env

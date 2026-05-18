@@ -13,5 +13,9 @@ credentials.json
 # User-specific config
 *.local.json
 
+# Generated/output files
+*.html
+tempest-automation-workflow.html
+
 # System files
 .DS_Store

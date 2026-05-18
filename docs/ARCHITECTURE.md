@@ -9,18 +9,21 @@ Overview of the OpenStack Tempest Coverage Automation system design.
 │                        User (Claude Code)                    │
 └───────────────────────┬─────────────────────────────────────┘
                         │
-           ┌────────────┴────────────┐
-           │                         │
-    ┌──────▼──────┐          ┌──────▼──────┐
-    │  Analysis   │          │Implementat  │
-    │   Skill     │          │ ion Skill   │
-    └──────┬──────┘          └──────┬──────┘
-           │                         │
-           │                         │
-    ┌──────▼─────────────────────────▼──────┐
-    │       Shared Configuration             │
-    │    (Service mappings, patterns)        │
-    └──────┬─────────────────────────┬───────┘
+           ┌────────────┼────────────────────┐
+           │            │                    │
+    ┌──────▼──────┐ ┌──▼───────────┐ ┌──────▼──────┐
+    │  Analysis   │ │Implementat   │ │  DevStack   │
+    │   Skill     │ │ ion Skill    │ │ Verify Skill│
+    └──────┬──────┘ └──────┬───────┘ └──────┬──────┘
+           │               │                 │
+           │               │           ┌─────▼─────┐
+           │               │           │ SSH to VM  │
+           │               │           │ (DevStack) │
+           │               │           └─────┬──────┘
+    ┌──────▼───────────────▼─────────────────▼──────┐
+    │       Shared Configuration                     │
+    │    (Service mappings, patterns, DevStack)      │
+    └──────┬─────────────────────────┬───────────────┘
            │                         │
     ┌──────▼──────┐          ┌──────▼──────┐
     │   Explore   │          │   Tempest   │
@@ -45,6 +48,13 @@ Overview of the OpenStack Tempest Coverage Automation system design.
 - Process: Explore → Plan → Implement → Validate → Commit
 - Output: Validated code + git commit + recap
 - Speed: 5-10 minutes
+
+**verify-tempest-devstack:**
+- Purpose: Verify tests against real OpenStack APIs
+- Input: Ticket ID, test files from implementation
+- Process: Parse tests → Deploy DevStack → Install Tempest → Run tests → Collect results
+- Output: Verification report + structured feedback (on failure)
+- Speed: 35-90 minutes (includes DevStack deployment)
 
 ### Shared Configuration
 
@@ -130,6 +140,41 @@ Final Recap
 Ready for Review
 ```
 
+### Verification Workflow
+
+```
+Implementation Output (test files on branch)
+    ↓
+[Parse test code for required services/extensions]
+    ↓ (local grep/read)
+[SSH to VM → Clean previous → Clone DevStack]
+    ↓
+[Generate local.conf with required services]
+    ↓
+[Run stack.sh (30-60 min, background + poll)]
+    ↓
+[Verify deployment → Install Tempest + plugin]
+    ↓
+[SCP test files to VM]
+    ↓
+[tempest run --regex '{module}']
+    ↓
+[Collect results + service logs]
+    ↓
+[Measure coverage delta]
+    ↓
+    +──── PASSED → VERIFIED (update Jira) → git review (manual)
+    |
+    +──── FAILED → Structured feedback
+                        ↓
+               [implement-tempest-tests --fix-context]
+                        ↓
+               [Re-verify with --skip-deploy (once)]
+                        ↓
+                   PASSED → VERIFIED (update Jira) → git review (manual)
+                   FAILED → VERIFICATION_FAILED
+```
+
 ## Configuration Hierarchy
 
 ```
@@ -164,7 +209,8 @@ Skills use Claude Code memory for:
 1. Update config.json service mapping
 2. Add base class patterns
 3. Add client patterns
-4. Test with real repository
+4. Add DevStack service mapping in verify-tempest-devstack/config.json
+5. Test with real repository
 
 **Add new validation:**
 1. Update skill validation logic
@@ -175,5 +221,10 @@ Skills use Claude Code memory for:
 1. Create template in skills/shared/templates/
 2. Reference in skill.md
 3. Test generation
+
+**Configure DevStack verification:**
+1. Update skills/verify-tempest-devstack/config.json with VM SSH details
+2. Ensure VM has sufficient resources (8GB RAM, 60GB disk, 4 vCPUs)
+3. Test SSH connectivity: `ssh -i {key} {user}@{host} "echo ok"`
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for extension guidelines.

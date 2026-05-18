@@ -1,0 +1,42 @@
+{
+  "state_directory": "~/.claude/orchestrator-state",
+  "state_file": "~/.claude/orchestrator-state/pipeline-state.json",
+  "jql_filter_description": "CUSTOMIZE THIS: Replace 'OSPRH' with your Jira project key. The label 'needs-tempest-coverage' must exist in your Jira instance or use a different label.",
+  "jql_filter": "project = OSPRH AND labels = needs-tempest-coverage AND status NOT IN (Closed, Done, Resolved)",
+  "approval": {
+    "threshold_votes": 1,
+    "timeout_days": 7,
+    "approval_keywords": ["approved", "LGTM", "looks good", "Approved"],
+    "rejection_keywords": ["rejected", "not approved", "decline", "Rejected"]
+  },
+  "stages": {
+    "DISCOVERED": "Ticket found via JQL or manual input",
+    "ANALYZED": "Coverage analysis completed",
+    "PLAN_POSTED": "Test plan posted to Jira (transitional)",
+    "AWAITING_APPROVAL": "Waiting for stakeholder approval in Jira",
+    "APPROVED": "Plan approved, ready for implementation",
+    "IMPLEMENTING": "Test implementation in progress",
+    "VERIFYING": "Tests being verified against DevStack",
+    "FIX_IN_PROGRESS": "Re-implementing tests after verification failure",
+    "VERIFIED": "Tests passed on real DevStack environment",
+    "VERIFICATION_FAILED": "Tests failed after retry cycle exhausted",
+    "VERIFICATION_SKIPPED": "Tests cannot be verified on DevStack (requires specific backend/hardware/multi-node)",
+    "REJECTED": "Plan rejected by stakeholder",
+    "TIMED_OUT": "Approval deadline passed without response",
+    "ERROR": "Stage failed with error"
+  },
+  "verification": {
+    "max_retry_cycles": 1,
+    "update_jira_on_verified": true,
+    "update_jira_on_failed": true,
+    "verified_labels": ["automation-verified", "ready-to-push"],
+    "failed_labels": ["automation-verification-failed"],
+    "verified_jira_comment": "Tests verified on DevStack. {pass_count}/{total_count} tests passing. Branch: {branch_name}. Ready for Gerrit submission: git review",
+    "failed_jira_comment": "Verification failed after {retry_count} retry(s). Failed tests: {failed_test_list}. Manual investigation required.",
+    "deployment_failed_jira_comment": "DevStack deployment failed. This is an infrastructure issue, not a test code issue. Error: {deployment_error}. Check VM resources, network, and OS compatibility.",
+    "skipped_jira_comment": "Automated verification skipped — DevStack cannot provide the required environment. Reason: {skip_reason}. Manual verification on a real deployment is needed.",
+    "skipped_labels": ["automation-manual-verification-needed"]
+  },
+  "max_tickets_per_run": 5,
+  "dry_run": false
+}

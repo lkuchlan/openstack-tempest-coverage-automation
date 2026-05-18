@@ -102,6 +102,33 @@ else
     fi
 fi
 
+# Orchestrator skill
+if [ -d "$REPO_ROOT/skills/orchestrator" ]; then
+    ln -sf "$REPO_ROOT/skills/orchestrator" "$SKILLS_DIR/orchestrator"
+    echo -e "${GREEN}✓${NC} orchestrator"
+else
+    if [ -d "$REPO_ROOT/.claude/skills/orchestrator" ]; then
+        ln -sf "$REPO_ROOT/.claude/skills/orchestrator" "$SKILLS_DIR/orchestrator"
+        echo -e "${GREEN}✓${NC} orchestrator"
+    else
+        echo -e "${YELLOW}⚠️  orchestrator not found${NC}"
+    fi
+fi
+
+# DevStack verification skill
+if [ -d "$REPO_ROOT/skills/verify-tempest-devstack" ]; then
+    ln -sf "$REPO_ROOT/skills/verify-tempest-devstack" "$SKILLS_DIR/verify-tempest-devstack"
+    echo -e "${GREEN}✓${NC} verify-tempest-devstack"
+else
+    # Check .claude/skills location (during development)
+    if [ -d "$REPO_ROOT/.claude/skills/verify-tempest-devstack" ]; then
+        ln -sf "$REPO_ROOT/.claude/skills/verify-tempest-devstack" "$SKILLS_DIR/verify-tempest-devstack"
+        echo -e "${GREEN}✓${NC} verify-tempest-devstack"
+    else
+        echo -e "${YELLOW}⚠️  verify-tempest-devstack not found${NC}"
+    fi
+fi
+
 # Shared config
 if [ -d "$REPO_ROOT/skills/shared" ]; then
     ln -sf "$REPO_ROOT/skills/shared" "$SKILLS_DIR/tempest-coverage"
@@ -187,10 +214,24 @@ else
     VALIDATION_OK=false
 fi
 
+if [ -d "$SKILLS_DIR/orchestrator" ]; then
+    echo -e "${GREEN}✓${NC} orchestrator skill installed"
+else
+    echo -e "${RED}✗${NC} orchestrator skill NOT found"
+    VALIDATION_OK=false
+fi
+
 if [ -d "$SKILLS_DIR/tempest-coverage" ]; then
     echo -e "${GREEN}✓${NC} tempest-coverage (shared config) installed"
 else
     echo -e "${RED}✗${NC} tempest-coverage (shared config) NOT found"
+    VALIDATION_OK=false
+fi
+
+if [ -d "$SKILLS_DIR/verify-tempest-devstack" ]; then
+    echo -e "${GREEN}✓${NC} verify-tempest-devstack skill installed"
+else
+    echo -e "${RED}✗${NC} verify-tempest-devstack skill NOT found"
     VALIDATION_OK=false
 fi
 
@@ -218,11 +259,16 @@ echo ""
 echo -e "${YELLOW}2. (Optional) Update repository paths:${NC}"
 echo -e "   vi $SKILLS_DIR/tempest-coverage/config.json"
 echo ""
-echo -e "${YELLOW}3. Test the skills:${NC}"
+echo -e "${YELLOW}3. (Optional) Configure DevStack VM for verification:${NC}"
+echo -e "   vi $REPO_ROOT/skills/verify-tempest-devstack/config.json"
+echo -e "   Update: ssh.host, ssh.user, ssh.key_path"
+echo ""
+echo -e "${YELLOW}4. Test the skills:${NC}"
 echo -e "   claude"
 echo -e "   > ${BLUE}/jira-coverage-analysis --help${NC}"
 echo -e "   > ${BLUE}/post-test-plan --help${NC}"
 echo -e "   > ${BLUE}/implement-tempest-tests --help${NC}"
+echo -e "   > ${BLUE}/verify-tempest-devstack --help${NC}"
 echo ""
 
 echo -e "${BLUE}📚 Documentation:${NC}"

@@ -22,6 +22,9 @@
       ],
       "keystone-tempest-plugin": [
         "~/tempest-workspace/keystone-tempest-plugin"
+      ],
+      "neutron-tempest-plugin": [
+        "~/tempest-workspace/neutron-tempest-plugin"
       ]
     }
   },
@@ -65,14 +68,14 @@
     "tempest_hacking_guide": "https://docs.openstack.org/tempest/latest/HACKING.html",
     "tempest_docs": "https://docs.openstack.org/tempest/latest/",
     "openstack_specs": "https://specs.openstack.org/",
-    "jira_url": "https://issues.redhat.com"
+    "jira_url": "env:JIRA_URL"
   },
 
   "jira_integration": {
     "description": "Jira MCP server integration settings",
     "enabled": true,
     "use_mcp_if_available": true,
-    "default_jira_url": "https://issues.redhat.com",
+    "default_jira_url": "env:JIRA_URL",
     "ticket_id_patterns": [
       "RHEL-\\d+",
       "OSPRH-\\d+",
@@ -147,7 +150,7 @@
       "mention_assignee": true,
       "add_labels": ["automation-test-plan"],
       "format": "format1",
-      "approval_keywords": ["approved", "LGTM", "looks good"],
+      "approval_keywords": ["approved", "LGTM", "looks good", "Approved"],
       "read_only_fallback": true,
       "duplicate_detection": {
         "description": "Prevents posting duplicate test plans to the same ticket",
@@ -232,5 +235,12 @@
       "waiters.wait_for_share_status",
       "waiters.wait_for_image_status"
     ]
+  },
+
+  "devstack_integration": {
+    "description": "DevStack integration settings for verification",
+    "tempest_repo": "https://opendev.org/openstack/tempest.git",
+    "plugin_base_url": "https://opendev.org/openstack/",
+    "tempest_config_tool": "discover-tempest-config"
   }
 }

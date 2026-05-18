@@ -24,6 +24,36 @@ This skill is for:
 
 ---
 
+## ⚠️ CRITICAL: OpenStack Test Organization
+
+**OpenStack tests are split across TWO repositories:**
+
+1. **Main Tempest** (`~/automation_projects/tempest`)
+   - Contains **CORE** integration tests for all OpenStack services
+   - Location: `tempest/api/{service}/` (e.g., `tempest/api/volume/`, `tempest/api/image/`)
+   - **70-80% of tests live here**
+   - Tests: Core CRUD, attach, detach, upload, extend, basic scenarios
+
+2. **Service Plugin** (`~/automation_projects/{service}-tempest-plugin`)
+   - Contains **service-specific** advanced features
+   - Location: `{service}_tempest_plugin/api/`, `{service}_tempest_plugin/scenario/`
+   - **20-30% of tests live here**
+   - Tests: Replication, drivers, backends, RBAC, advanced scenarios
+
+**YOU MUST SEARCH BOTH REPOSITORIES IN EVERY ANALYSIS.**
+
+**Failure to search main Tempest will result in:**
+- ❌ False "no coverage exists" reports
+- ❌ Recommending tests that already exist
+- ❌ Wasted implementation effort
+- ❌ Misleading stakeholders
+
+**Example: Volume upload-to-image**
+- ✅ Exists in: `tempest/api/volume/test_volumes_actions.py` (main Tempest)
+- ❌ Does NOT exist in: `cinder-tempest-plugin` (only searched here = missed!)
+
+---
+
 ## Execution Workflow
 
 ### STEP 1: Fetch Jira Ticket or Requirements
@@ -68,21 +98,30 @@ This skill is for:
 
 ### STEP 2: Locate Tempest Repositories
 
-**Actions:**
-- Find local Tempest repositories
-- Determine correct plugin for the service
-- Verify repository exists
+**CRITICAL: OpenStack test organization requires searching BOTH repositories:**
 
-**Search Strategy:**
+1. **Main Tempest** - Contains **CORE** integration tests for all OpenStack services
+   - Location: `~/automation_projects/tempest` or similar
+   - Contains: `tempest/api/volume/`, `tempest/api/image/`, `tempest/api/compute/`
+   - **PRIMARY source** for core API tests (attach, detach, upload, extend, etc.)
+
+2. **Service Plugin** - Contains **service-specific** advanced features
+   - Location: `~/automation_projects/{service}-tempest-plugin`
+   - Contains: `{service}_tempest_plugin/api/`, `{service}_tempest_plugin/scenario/`
+   - Secondary source for driver-specific, backend-specific, advanced features
+
+**Search Strategy (MUST find BOTH):**
 ```bash
-# Find Tempest repos (searches common locations)
-find ~ -type d -name "*tempest*" -maxdepth 3
+# 1. Find main Tempest repository (CRITICAL - search first)
+find ~ -type d -name "tempest" -maxdepth 3 | grep -E "/(tempest|openstack-tempest)$"
 
-# Find service plugin
+# 2. Find service-specific plugin
 find ~ -type d -name "{service}-tempest-plugin" -maxdepth 3
 ```
 
-**If repo missing:**
+**If repos missing:**
+- **Main Tempest missing:** CRITICAL - most tests live here, report as major blocker
+- **Plugin missing:** Less critical - only advanced features affected
 - Note in analysis report
 - Indicate implementation will require repo setup
 - Continue analysis based on upstream structure
@@ -91,40 +130,68 @@ find ~ -type d -name "{service}-tempest-plugin" -maxdepth 3
 - **Bash** (find commands)
 
 **Output:**
-- Repository location (if found)
-- Plugin name
+- **Main Tempest location** (if found) - REQUIRED
+- **Plugin location** (if found) - OPTIONAL
 - Repository status (found/not found)
 
 ---
 
 ### STEP 3: Discover Existing Coverage (CRITICAL)
 
+**CRITICAL: MUST search BOTH repositories in this order:**
+
+1. **Main Tempest FIRST** (contains core API tests)
+2. **Service Plugin SECOND** (contains advanced features)
+
+**Why this order matters:**
+- Core operations (upload, attach, extend) live in **main Tempest**
+- Missing main Tempest = missing 70% of existing coverage
+- Plugin tests supplement, not replace, main Tempest tests
+
 **Actions:**
 
-Spawn **Agent (Explore)** to search for existing test coverage:
+Spawn **Agent (Explore)** with explicit instructions to search **BOTH** repositories:
 
-**Search for:**
+**Search Priority:**
+
+**A. Main Tempest Repository (PRIMARY - search first):**
+```bash
+cd ~/automation_projects/tempest
+
+# Search for volume-related tests on origin/master
+git grep -i "{feature|operation}" origin/master -- "tempest/api/volume/*.py" | grep test
+
+# Search for image-related tests
+git grep -i "{feature}" origin/master -- "tempest/api/image/*.py" | grep test
+
+# Find all volume action tests
+git ls-tree -r origin/master --name-only | grep "tempest/api/volume/test_"
+
+# Search for specific operations (e.g., upload, attach, extend)
+git grep "def test.*{operation}" origin/master -- tempest/api/
+```
+
+**B. Service Plugin (SECONDARY - search after main Tempest):**
+```bash
+cd ~/automation_projects/{service}-tempest-plugin
+
+# Search for service-specific tests
+git grep -i "{feature}" origin/master -- "{service}_tempest_plugin/**/*.py" | grep test
+
+# Find test files
+git ls-tree -r origin/master --name-only | grep "test_"
+```
+
+**Search for (in BOTH repositories):**
 1. **Existing tests** for this feature/API
 2. **Base test classes** (e.g., BaseVolumeTest)
-3. **Service clients** (e.g., volumes_client)
+3. **Service clients** (e.g., volumes_client, images_client)
 4. **Similar tests** that could serve as templates
 5. **Recent tests** in same area (check git log)
 
-**Search Patterns:**
-```bash
-# Search for feature-specific tests
-grep -r "test_.*{operation}" {repo}/tests/
-
-# Find base classes
-grep -r "class.*{Service}.*Test" {repo}/
-
-# Find recent tests in area
-cd {repo}
-git log --since="6 months ago" --name-only -- tests/{service}/
-```
-
 **Analysis Questions:**
-- What tests exist for this API?
+- What tests exist for this API **in main Tempest**?
+- What tests exist for this API **in service plugin**?
 - What scenarios are covered?
 - What test patterns are used?
 - Are there RBAC tests?
@@ -132,14 +199,15 @@ git log --since="6 months ago" --name-only -- tests/{service}/
 - What's the test quality (cleanup, waiters, etc.)?
 
 **Tool Usage:**
-- **Agent (Explore, very thorough)** - Deep codebase search
+- **Agent (Explore, very thorough)** - Deep codebase search of **BOTH** repositories
 - **Read** - Examine found tests
-- **Bash** - git log, grep searches
+- **Bash** - git grep, git ls-tree on origin/master for **BOTH** repos
 
 **Output:**
-- List of existing test files
-- Test classes and methods found
-- Coverage scope (what's tested)
+- **Main Tempest tests found** (list files and methods)
+- **Plugin tests found** (list files and methods)
+- Test classes and methods found in EACH repository
+- Coverage scope (what's tested in each)
 - Test quality assessment
 
 ---
@@ -422,16 +490,31 @@ Provide actionable recommendations for implementation.
 
 {Only include tests that exist on origin/master or origin/main}
 {Completely ignore tests on local branches, feature branches, or uncommitted}
+{MUST report tests from BOTH main Tempest and service plugin}
 
-**Repository:** `{service}-tempest-plugin` (origin/{default_branch})
+### A. Main Tempest (Core API Tests)
 
-**File:** `{plugin}/tests/{path}/test_{feature}.py`
+**Repository:** `tempest` (origin/{default_branch})
+
+**File:** `tempest/api/{service}/test_{feature}.py`
 
 **Tests found:**
 - `test_{scenario_1}()` - {Brief what it tests}
 - `test_{scenario_2}()` - {Brief what it tests}
 
-**Covers:** {One-line summary - e.g., "Basic CRUD, positive flows"}
+**Covers:** {One-line summary - e.g., "Core volume actions, basic workflows"}
+
+### B. Service Plugin (Advanced Features)
+
+**Repository:** `{service}-tempest-plugin` (origin/{default_branch})
+
+**File:** `{service}_tempest_plugin/tests/{path}/test_{feature}.py`
+
+**Tests found:**
+- `test_{scenario_3}()` - {Brief what it tests}
+- OR: **No service-specific tests found** (only core tests in main Tempest)
+
+**Covers:** {One-line summary - e.g., "Driver-specific features, RBAC"}
 
 ---
 
@@ -450,16 +533,20 @@ Provide actionable recommendations for implementation.
 
 ## 4. Implementation Location
 
-**Repository:** `{service}-tempest-plugin`
+**Repository Decision:**
+- **Main Tempest:** Use for core API operations (upload, attach, extend, CRUD)
+- **Service Plugin:** Use for service-specific features (replication, drivers, backends, RBAC)
 
-**Directory:** `{plugin}/tests/{api|scenario}/{subdir}/`
+**Recommended Repository:** `{tempest OR service-tempest-plugin}`
+
+**Directory:** `{tempest/api/service OR plugin/tests/api}/{subdir}/`
 
 **File(s):**
 - **New:** `test_{feature}_{type}.py` (will create)
 - **Modify:** `test_{existing}.py` (will add to existing)
 
-**Base class:** `Base{Service}Test`
-**Clients:** `{service}_client`, `{other}_client`
+**Base class:** `Base{Service}Test` (from tempest or plugin)
+**Clients:** `{service}_client`, `{other}_client` (e.g., volumes_client, images_client)
 
 ---
 
@@ -476,13 +563,13 @@ END OF ANALYSIS REPORT
 | Phase | Primary Tools | Purpose |
 |-------|---------------|---------|
 | Ticket Fetch | jira_get_issue, jira_search, Read | Get requirements |
-| Repo Discovery | Bash (find) | Locate repositories |
-| Coverage Discovery | Agent (Explore), Read, Bash | Find existing tests |
-| Remote State Check | Bash (git fetch, git ls-tree, git show) | Verify tests exist on origin/master or origin/main |
-| Gap Analysis | Read, comparison logic | Identify missing coverage |
+| Repo Discovery | Bash (find) | Locate **BOTH** main Tempest and service plugin |
+| Coverage Discovery | Agent (Explore), Read, Bash | Find existing tests in **BOTH** repositories |
+| Remote State Check | Bash (git fetch, git ls-tree, git show) | Verify tests exist on origin/master in **BOTH** repos |
+| Gap Analysis | Read, comparison logic | Identify missing coverage across both repos |
 | Effort Estimation | Analysis, patterns | Estimate hours |
-| Recommendations | Pattern matching | Implementation guidance |
-| Report Generation | Markdown formatting | Structured output |
+| Recommendations | Pattern matching | Implementation guidance (which repo to use) |
+| Report Generation | Markdown formatting | Structured output showing both repos |
 
 ---
 
@@ -490,34 +577,40 @@ END OF ANALYSIS REPORT
 
 A successful analysis includes:
 1. ✅ Requirements clearly extracted
-2. ✅ Existing coverage identified (MERGED tests only, from origin/master or origin/main)
-3. ✅ Local/in-development tests completely ignored (not mentioned in report)
-4. ✅ Gaps clearly documented with priority
-5. ✅ Effort estimated for each gap
-6. ✅ Implementation recommendations provided
-7. ✅ Structured report generated
-8. ✅ Analysis complete in < 5 minutes (fast, no implementation)
+2. ✅ **BOTH repositories searched** (main Tempest FIRST, then service plugin)
+3. ✅ Existing coverage identified (MERGED tests only, from origin/master or origin/main in BOTH repos)
+4. ✅ Local/in-development tests completely ignored (not mentioned in report)
+5. ✅ Gaps clearly documented with priority
+6. ✅ Effort estimated for each gap
+7. ✅ Implementation recommendations provided (which repo to use)
+8. ✅ Structured report generated showing coverage from BOTH repos
+9. ✅ Analysis complete in < 5 minutes (fast, no implementation)
 
 ---
 
 ## Constraints & Rules
 
 ### ✅ DO:
+- **CRITICAL:** Search **BOTH** main Tempest and service plugin repositories
+- **CRITICAL:** Search main Tempest **FIRST** (contains 70% of core tests)
+- **CRITICAL:** Check remote repository state (origin/master or origin/main) for **BOTH** repos
 - Analyze thoroughly but stay focused on the ticket requirement
-- **CRITICAL:** Check remote repository state (origin/master or origin/main)
-- Only report tests that exist on remote default branch
+- Only report tests that exist on remote default branch in **BOTH** repos
 - Completely ignore tests on local/feature branches or uncommitted
 - Identify critical gaps that directly address the issue
 - Recommend 2-4 focused tests (not 5+ granular variations)
 - Assess test quality honestly
 - Provide actionable, specific recommendations
+- Specify which repo (main Tempest vs plugin) for new tests
 - Be fast (analysis only, no code generation)
 - Can analyze multiple tickets in one run
 
 ### ❌ DON'T:
+- **CRITICAL:** Skip searching main Tempest repository (most tests live there!)
+- **CRITICAL:** Only search service plugin and miss core tests
+- **CRITICAL:** Report tests from local branches as "existing coverage"
 - Recommend excessive test coverage beyond ticket scope
 - Suggest tests for every edge case or minor variation
-- **CRITICAL:** Report tests from local branches as "existing coverage"
 - Include in-development tests in analysis report
 - Include uncommitted tests in analysis report
 - Mention tests that aren't on origin/master or origin/main
@@ -603,15 +696,16 @@ The skill uses shared configuration:
 
 **Every execution provides:**
 - ✅ Structured analysis report
+- ✅ **Coverage from BOTH main Tempest and service plugin** (if applicable)
 - ✅ Only merged tests (origin/master or origin/main) reported as existing coverage
 - ✅ Local/in-development tests completely ignored
-- ✅ Clear gap identification
+- ✅ Clear gap identification across both repositories
 - ✅ Priority assessment
 - ✅ Effort estimation
-- ✅ Implementation recommendations
+- ✅ Implementation recommendations (which repo to use for new tests)
 - ✅ Fast execution (< 5 minutes)
 - ✅ No code implementation
-- ✅ Git operations limited to read-only (fetch, ls-tree, show)
+- ✅ Git operations limited to read-only (fetch, ls-tree, show) on **BOTH** repos
 
 ---
 
