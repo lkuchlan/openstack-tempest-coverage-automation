@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1380" height="820" viewBox="0 0 1380 820"
+     style="background:#ffffff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#555"/>
+    </marker>
+    <marker id="arr-b" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#4a9fd4"/>
+    </marker>
+    <marker id="arr-o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#d4860a"/>
+    </marker>
+    <marker id="arr-g" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#3a8a3a"/>
+    </marker>
+  </defs>
+
+  <!-- TITLE -->
+  <text x="40" y="28" font-size="16" font-weight="500" fill="#444" letter-spacing="0.3">System Architecture — Tempest Coverage Automation</text>
+
+  <!-- USER BOX -->
+  <rect x="400" y="48" width="500" height="108" rx="10" fill="#e8f4fd" stroke="#4a9fd4" stroke-width="1.8"/>
+  <text x="650" y="72"  text-anchor="middle" font-size="14" font-weight="700" fill="#1a5f8a">USER</text>
+  <line x1="418" y1="80" x2="882" y2="80" stroke="#4a9fd4" stroke-width="0.8" opacity="0.5"/>
+  <text x="650" y="97"  text-anchor="middle" font-size="11.5" fill="#2c6fa8">/jira-coverage-analysis    /post-test-plan    /implement-tempest-tests</text>
+  <text x="650" y="116" text-anchor="middle" font-size="11.5" fill="#2c6fa8">/verify-tempest-devstack    /orchestrator</text>
+  <text x="650" y="144" text-anchor="middle" font-size="10"   fill="#888">invokes skills directly</text>
+
+  <!-- USER → Skills -->
+  <line x1="650" y1="156" x2="650" y2="190" stroke="#4a9fd4" stroke-width="1.5" marker-end="url(#arr-b)"/>
+
+  <!-- SKILLS CONTAINER -->
+  <rect x="40" y="196" width="800" height="316" rx="10" fill="#f9f9f9" stroke="#bbb" stroke-width="1.5" stroke-dasharray="7,4"/>
+  <text x="58" y="220" font-size="12" font-weight="600" fill="#777" letter-spacing="0.3">Skills  (user-facing · dual-mode: markdown for humans, JSON for orchestrator)</text>
+
+  <!-- jira-coverage-analysis -->
+  <rect x="68"  y="236" width="224" height="64" rx="7" fill="#fff" stroke="#ccc" stroke-width="1.2"/>
+  <text x="180" y="256" text-anchor="middle" font-size="12"   font-weight="600" fill="#1a1a1a">jira-coverage-analysis</text>
+  <text x="180" y="272" text-anchor="middle" font-size="10.5" fill="#777">Fetch ticket → Explore → Gap report</text>
+  <text x="180" y="288" text-anchor="middle" font-size="10"   fill="#aaa">Bash · Read · MCP</text>
+
+  <!-- implement-tempest-tests -->
+  <rect x="68"  y="318" width="224" height="64" rx="7" fill="#fff" stroke="#ccc" stroke-width="1.2"/>
+  <text x="180" y="338" text-anchor="middle" font-size="12"   font-weight="600" fill="#1a1a1a">implement-tempest-tests</text>
+  <text x="180" y="354" text-anchor="middle" font-size="10.5" fill="#777">Explore → Generate → tox → commit</text>
+  <text x="180" y="370" text-anchor="middle" font-size="10"   fill="#aaa">Read · Write · Edit · Bash</text>
+
+  <!-- verify-tempest-devstack -->
+  <rect x="68"  y="400" width="224" height="64" rx="7" fill="#fff" stroke="#ccc" stroke-width="1.2"/>
+  <text x="180" y="420" text-anchor="middle" font-size="12"   font-weight="600" fill="#1a1a1a">verify-tempest-devstack</text>
+  <text x="180" y="436" text-anchor="middle" font-size="10.5" fill="#777">SSH → DevStack → tempest run</text>
+  <text x="180" y="452" text-anchor="middle" font-size="10"   fill="#aaa">Bash (SSH) · Read · Write</text>
+
+  <!-- post-test-plan -->
+  <rect x="330" y="236" width="224" height="64" rx="7" fill="#fff" stroke="#ccc" stroke-width="1.2"/>
+  <text x="442" y="256" text-anchor="middle" font-size="12"   font-weight="600" fill="#1a1a1a">post-test-plan</text>
+  <text x="442" y="272" text-anchor="middle" font-size="10.5" fill="#777">Format → Post to Jira → Schedule</text>
+  <text x="442" y="288" text-anchor="middle" font-size="10"   fill="#aaa">MCP · Read · CronCreate</text>
+
+  <!-- orchestrator -->
+  <rect x="330" y="318" width="224" height="146" rx="7" fill="#f0f5ff" stroke="#7aabdf" stroke-width="1.4"/>
+  <text x="442" y="340" text-anchor="middle" font-size="12"   font-weight="700" fill="#1a3a6a">orchestrator</text>
+  <line x1="348" y1="348" x2="536" y2="348" stroke="#7aabdf" stroke-width="0.8" opacity="0.6"/>
+  <text x="442" y="364" text-anchor="middle" font-size="10.5" fill="#444">Thin pipeline router</text>
+  <text x="442" y="380" text-anchor="middle" font-size="10.5" fill="#444">reads state → invokes skills</text>
+  <text x="442" y="396" text-anchor="middle" font-size="10.5" fill="#444">spawns agents → writes state</text>
+  <text x="442" y="416" text-anchor="middle" font-size="10"   fill="#aaa">Bash · Read · Write · Skill · Agent</text>
+  <text x="442" y="435" text-anchor="middle" font-size="10"   fill="#7aabdf" font-style="italic">skips AWAITING_APPROVAL</text>
+  <text x="442" y="450" text-anchor="middle" font-size="10"   fill="#7aabdf" font-style="italic">(approval-monitor owns it)</text>
+
+  <!-- CRON CREATE NODE -->
+  <rect x="874" y="248" width="148" height="48" rx="8" fill="#fff8e1" stroke="#d4a017" stroke-width="1.5"/>
+  <text x="948" y="268" text-anchor="middle" font-size="11.5" font-weight="600" fill="#8a5f00">CronCreate</text>
+  <text x="948" y="284" text-anchor="middle" font-size="10"   fill="#a07010">durable · every 4 h</text>
+
+  <!-- post-test-plan → CronCreate -->
+  <line x1="554" y1="268" x2="874" y2="268" stroke="#d4a017" stroke-width="1.4" marker-end="url(#arr-o)"/>
+  <text x="714" y="260" text-anchor="middle" font-size="10" fill="#a07010">schedules after posting</text>
+
+  <!-- AGENTS -->
+
+  <!-- approval-monitor -->
+  <rect x="1060" y="208" width="280" height="140" rx="10" fill="#fff3e0" stroke="#e67e22" stroke-width="1.8"/>
+  <text x="1200" y="232" text-anchor="middle" font-size="13" font-weight="700" fill="#8a3a00">approval-monitor</text>
+  <text x="1200" y="249" text-anchor="middle" font-size="10" font-weight="600" fill="#e67e22" letter-spacing="1">AGENT</text>
+  <line x1="1078" y1="256" x2="1322" y2="256" stroke="#e67e22" stroke-width="0.8" opacity="0.5"/>
+  <text x="1200" y="274" text-anchor="middle" font-size="11" fill="#555">Polls Jira every 4 h</text>
+  <text x="1200" y="291" text-anchor="middle" font-size="11" fill="#555">Updates pipeline state</text>
+  <text x="1200" y="308" text-anchor="middle" font-size="11" fill="#555">APPROVED / REJECTED / TIMED_OUT</text>
+  <text x="1200" y="332" text-anchor="middle" font-size="10" fill="#aaa">Bash · Read · MCP</text>
+
+  <!-- code-reviewer -->
+  <rect x="1060" y="382" width="280" height="130" rx="10" fill="#fff3e0" stroke="#e67e22" stroke-width="1.8"/>
+  <text x="1200" y="406" text-anchor="middle" font-size="13" font-weight="700" fill="#8a3a00">code-reviewer</text>
+  <text x="1200" y="423" text-anchor="middle" font-size="10" font-weight="600" fill="#e67e22" letter-spacing="1">AGENT</text>
+  <line x1="1078" y1="430" x2="1322" y2="430" stroke="#e67e22" stroke-width="0.8" opacity="0.5"/>
+  <text x="1200" y="448" text-anchor="middle" font-size="11" fill="#555">7 Tempest standard checks</text>
+  <text x="1200" y="465" text-anchor="middle" font-size="11" fill="#555">Static analysis · ~10 seconds</text>
+  <text x="1200" y="482" text-anchor="middle" font-size="11" fill="#555">Returns structured JSON</text>
+  <text x="1200" y="500" text-anchor="middle" font-size="10" fill="#aaa">Bash · Read  (read-only)</text>
+
+  <!-- CronCreate → approval-monitor -->
+  <line x1="1022" y1="272" x2="1060" y2="272" stroke="#d4a017" stroke-width="1.4" marker-end="url(#arr-o)"/>
+  <text x="1041" y="264" text-anchor="middle" font-size="10" fill="#a07010">fires</text>
+
+  <!-- orchestrator → code-reviewer -->
+  <line x1="840" y1="430" x2="1060" y2="430" stroke="#555" stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="950" y="422" text-anchor="middle" font-size="10" fill="#777">spawns agent</text>
+
+  <!-- SHARED INFRASTRUCTURE -->
+
+  <!-- Shared State -->
+  <rect x="40" y="560" width="380" height="88" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+  <text x="230" y="584" text-anchor="middle" font-size="12" font-weight="700" fill="#1b5e20">Shared State</text>
+  <line x1="58" y1="592" x2="402" y2="592" stroke="#4caf50" stroke-width="0.8" opacity="0.5"/>
+  <text x="230" y="612" text-anchor="middle" font-size="11" fill="#2e7d32">~/.claude/orchestrator-state/pipeline-state.json</text>
+  <text x="230" y="632" text-anchor="middle" font-size="10.5" fill="#555">Written by: orchestrator, approval-monitor</text>
+
+  <!-- Shared Config -->
+  <rect x="460" y="560" width="780" height="88" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="1.5"/>
+  <text x="850" y="584" text-anchor="middle" font-size="12" font-weight="700" fill="#1b5e20">Shared Configuration</text>
+  <line x1="478" y1="592" x2="1222" y2="592" stroke="#4caf50" stroke-width="0.8" opacity="0.5"/>
+  <text x="850" y="612" text-anchor="middle" font-size="11" fill="#2e7d32">~/.claude/skills/tempest-coverage/config.json</text>
+  <text x="850" y="632" text-anchor="middle" font-size="10.5" fill="#555">Service-to-plugin mapping · base class patterns · approval keywords · tox envs</text>
+
+  <!-- Skills → Shared State -->
+  <line x1="230" y1="512" x2="230" y2="560" stroke="#4caf50" stroke-width="1.4" marker-end="url(#arr-g)"/>
+
+  <!-- approval-monitor → Shared State -->
+  <polyline points="1140,348 1140,530 420,530 420,560" stroke="#4caf50" stroke-width="1.4" fill="none" marker-end="url(#arr-g)"/>
+
+  <!-- orchestrator → Shared Config -->
+  <line x1="650" y1="512" x2="650" y2="560" stroke="#4caf50" stroke-width="1.4" marker-end="url(#arr-g)"/>
+
+  <!-- EXPLORE AGENT NOTE -->
+  <rect x="68" y="482" width="486" height="44" rx="7" fill="#f0f0f0" stroke="#ccc" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="311" y="501" text-anchor="middle" font-size="11" fill="#666">⤷  Explore agent (read-only pattern discovery) — spawned inline by</text>
+  <text x="311" y="518" text-anchor="middle" font-size="11" fill="#666">jira-coverage-analysis  and  implement-tempest-tests</text>
+
+  <!-- LEGEND -->
+  <rect x="40" y="698" width="680" height="94" rx="8" fill="#fafafa" stroke="#ddd" stroke-width="1"/>
+  <text x="56" y="718" font-size="11" font-weight="600" fill="#555">Legend</text>
+
+  <rect x="56"  y="730" width="14" height="14" rx="3" fill="#e8f4fd" stroke="#4a9fd4" stroke-width="1.2"/>
+  <text x="76"  y="742" font-size="11" fill="#555">User entry point</text>
+
+  <rect x="190" y="730" width="14" height="14" rx="3" fill="#f9f9f9" stroke="#bbb" stroke-width="1.2"/>
+  <text x="210" y="742" font-size="11" fill="#555">Skill (user-invocable)</text>
+
+  <rect x="370" y="730" width="14" height="14" rx="3" fill="#fff3e0" stroke="#e67e22" stroke-width="1.2"/>
+  <text x="390" y="742" font-size="11" fill="#555">Agent (machine-only, scoped tools)</text>
+
+  <rect x="580" y="730" width="14" height="14" rx="3" fill="#fff8e1" stroke="#d4a017" stroke-width="1.2"/>
+  <text x="600" y="742" font-size="11" fill="#555">Scheduler (CronCreate)</text>
+
+  <line x1="56"  y1="768" x2="96"  y2="768" stroke="#555"    stroke-width="1.4" marker-end="url(#arr)"/>
+  <text x="103"  y="772" font-size="11" fill="#555">Invocation / data flow</text>
+
+  <line x1="250" y1="768" x2="290" y2="768" stroke="#d4a017" stroke-width="1.4" marker-end="url(#arr-o)"/>
+  <text x="297"  y="772" font-size="11" fill="#555">Scheduled trigger</text>
+
+  <line x1="420" y1="768" x2="460" y2="768" stroke="#4caf50" stroke-width="1.4" marker-end="url(#arr-g)"/>
+  <text x="467"  y="772" font-size="11" fill="#555">Reads / writes shared infrastructure</text>
+
+</svg>

@@ -30,6 +30,16 @@ This skill is for:
 
 **Actions:**
 
+1. **Parse arguments and detect orchestrator mode:**
+   - Check if `--orchestrator-mode` flag is provided
+   - If YES:
+     - Set `orchestrator_mode = true`
+     - Minimize verbose output (no detailed markdown report)
+     - Return structured JSON only at the end (see after MANDATORY FINAL RECAP)
+   - If NO:
+     - Set `orchestrator_mode = false`
+     - Generate full markdown report with MANDATORY FINAL RECAP
+
 Accept requirements from multiple sources:
 
 **Option A: From Analysis Skill Output**
@@ -63,6 +73,49 @@ Requirements:
 - Identify service and plugin
 - Proceed to implementation
 
+**Option D: From Fix Context (Retry Cycle)**
+```bash
+/implement-tempest-tests TICKET-ID --fix-context '{...}'
+```
+
+**If `--fix-context` provided:**
+
+1. **Parse the fix context JSON:**
+   - Extract `source` field: `"code_review"` OR `"devstack_verification"`
+   - Extract violations/failures
+   - Extract suggested fixes
+
+2. **Determine fix strategy based on source:**
+
+   **If source == "code_review":**
+   - Extract violations from `fix_context.violations`
+   - Focus on fixing **Tempest standard violations**
+   - Examples:
+     - Change base class from `unittest.TestCase` to `BaseVolumeTest`
+     - Replace `time.sleep()` with `waiters.wait_for_*`
+     - Add missing decorators (`@decorators.idempotent_id`, `@decorators.attr`)
+     - Add `addCleanup()` for direct API calls
+     - Rename generic test methods to descriptive names
+   - Read reviewed files from `fix_context.reviewed_files`
+   - Apply fixes to those specific files
+
+   **If source == "devstack_verification":**
+   - Extract failed tests from `fix_context.failed_tests`
+   - Focus on fixing **runtime test failures**
+   - Examples:
+     - Fix API calls (wrong parameters, missing fields)
+     - Adjust assertions (expected vs. actual values)
+     - Fix resource dependencies (create required resources first)
+     - Handle timing issues (add proper waiters)
+     - Fix authentication/permissions
+   - Read `fix_context.environment_info` for context
+   - Apply fixes based on failure categories
+
+3. **Proceed to STEP 2 with fix context:**
+   - Service and plugin already known (from previous implementation)
+   - Skip pattern discovery (reuse existing patterns)
+   - Go directly to fixing the identified issues
+
 **Tool Usage:**
 - **jira_get_issue** (if Jira ticket and MCP available)
 - **Read** (if requirements in file)
@@ -73,7 +126,7 @@ Requirements:
 - Clear requirements
 - Service identified
 - Plugin identified
-- Gaps to implement
+- Gaps to implement (or fixes to apply)
 
 ---
 
@@ -737,6 +790,91 @@ git review
 END OF RECAP
 ========================
 ```
+
+---
+
+### Orchestrator Mode: Structured JSON Output
+
+**When `--orchestrator-mode` flag is provided:**
+
+Skip the detailed markdown report and MANDATORY FINAL RECAP. Return structured JSON only:
+
+```json
+{
+  "ticket_id": "OSPRH-22613",
+  "stage_completed": "IMPLEMENTING",
+  "status": "SUCCESS|ERROR",
+  "metadata": {
+    "service": "cinder",
+    "plugin": "cinder-tempest-plugin",
+    "repository_path": "/Users/user/automation_projects/cinder-tempest-plugin",
+    "branch": "tempest-coverage-OSPRH-22613",
+    "test_module": "cinder_tempest_plugin.api.volume.test_multiattach",
+    "test_files": [
+      "cinder_tempest_plugin/api/volume/test_multiattach.py"
+    ],
+    "test_files_absolute": [
+      "/Users/user/automation_projects/cinder-tempest-plugin/cinder_tempest_plugin/api/volume/test_multiattach.py"
+    ],
+    "test_methods": [
+      "test_volume_multiattach_admin_authorized",
+      "test_volume_multiattach_member_authorized",
+      "test_volume_multiattach_reader_denied"
+    ],
+    "validation_passed": true,
+    "pep8_passed": true,
+    "py3_passed": true,
+    "commit_sha": "a1b2c3d4",
+    "implementation_summary": "3 RBAC tests for volume multiattach"
+  },
+  "errors": []
+}
+```
+
+**Field Descriptions:**
+- `ticket_id`: Jira ticket ID (or "MANUAL" if no ticket)
+- `stage_completed`: Always "IMPLEMENTING" (orchestrator stage tracking)
+- `status`: "SUCCESS" if implementation completed, "ERROR" if failed
+- `metadata.service`: OpenStack service name
+- `metadata.plugin`: Tempest plugin name
+- `metadata.repository_path`: Absolute path to plugin repository
+- `metadata.branch`: Git branch created for this implementation
+- `metadata.test_module`: Python module path for tests (used for tox execution)
+- `metadata.test_files`: Relative paths to test files created/modified
+- `metadata.test_files_absolute`: Absolute paths to test files
+- `metadata.test_methods`: List of test method names implemented
+- `metadata.validation_passed`: Boolean (true if pep8 and py3 passed)
+- `metadata.pep8_passed`: Boolean (pep8 validation result)
+- `metadata.py3_passed`: Boolean (py3 validation result)
+- `metadata.commit_sha`: Git commit SHA (short form)
+- `metadata.implementation_summary`: One-sentence summary
+- `errors`: Array of error messages (empty if success)
+
+**Error Status Example:**
+```json
+{
+  "ticket_id": "OSPRH-22613",
+  "stage_completed": "IMPLEMENTING",
+  "status": "ERROR",
+  "metadata": {
+    "service": "cinder",
+    "plugin": "cinder-tempest-plugin"
+  },
+  "errors": [
+    "Repository not found: ~/automation_projects/cinder-tempest-plugin",
+    "Cannot proceed without repository"
+  ]
+}
+```
+
+**Exit Code:**
+- Exit with code 0 if `status == "SUCCESS"`
+- Exit with code 1 if `status == "ERROR"`
+
+**Notes for Orchestrator:**
+- `test_module` field is used by verify-tempest-devstack skill for tox execution
+- `branch` field is used by code-reviewer agent to locate test files
+- `repository_path` field is used by code-reviewer agent for git operations
 
 ---
 

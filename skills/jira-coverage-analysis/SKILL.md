@@ -60,12 +60,22 @@ This skill is for:
 
 **Actions:**
 
-1. **Check for Jira MCP Server:**
+1. **Parse arguments and detect orchestrator mode:**
+   - Check if `--orchestrator-mode` flag is provided
+   - If YES:
+     - Set `orchestrator_mode = true`
+     - Minimize verbose output (no markdown report)
+     - Return structured JSON only at the end (see STEP 7)
+   - If NO:
+     - Set `orchestrator_mode = false`
+     - Generate full markdown report (normal behavior)
+
+2. **Check for Jira MCP Server:**
    - Check if Jira MCP tools are available
    - If available, use MCP to fetch ticket automatically
    - If NOT available, ask user for ticket details
 
-2. **Fetch Ticket (if MCP available):**
+3. **Fetch Ticket (if MCP available):**
    ```
    Use jira_get_issue(issue_key="RHEL-12345")
    Extract: summary, description, acceptance criteria, components
@@ -465,9 +475,15 @@ Provide actionable recommendations for implementation.
 
 ### STEP 7: Generate Analysis Report (MANDATORY)
 
-**CRITICAL: Every execution MUST produce a concise analysis report.**
+**CRITICAL: Every execution MUST produce a report.**
 
-**Report Format:**
+**Output depends on mode:**
+- If `orchestrator_mode == false`: Generate markdown report (user-facing)
+- If `orchestrator_mode == true`: Generate structured JSON (orchestrator-facing)
+
+---
+
+#### A. Markdown Report Format (Normal Mode)
 
 ```markdown
 # Coverage Analysis: {TICKET-ID}
@@ -555,6 +571,72 @@ Provide actionable recommendations for implementation.
 
 END OF ANALYSIS REPORT
 ```
+
+---
+
+#### B. Structured JSON Format (Orchestrator Mode)
+
+**When `--orchestrator-mode` flag is provided:**
+
+```json
+{
+  "ticket_id": "OSPRH-22613",
+  "stage_completed": "ANALYZED",
+  "status": "SUCCESS|ERROR",
+  "metadata": {
+    "service": "cinder",
+    "plugin": "cinder-tempest-plugin",
+    "coverage_status": "COMPLETE|PARTIAL|MISSING",
+    "gaps_identified": 3,
+    "priority_breakdown": {
+      "HIGH": 2,
+      "MEDIUM": 1,
+      "LOW": 0
+    },
+    "effort_estimate_hours": 6,
+    "existing_test_files": [
+      "tempest/api/volume/test_volumes_actions.py",
+      "cinder_tempest_plugin/api/test_multiattach.py"
+    ],
+    "recommended_repository": "cinder-tempest-plugin",
+    "analysis_summary": "Brief summary of gaps found"
+  },
+  "errors": []
+}
+```
+
+**Field Descriptions:**
+- `ticket_id`: Jira ticket ID analyzed
+- `stage_completed`: Always "ANALYZED" (for orchestrator state tracking)
+- `status`: "SUCCESS" if analysis completed, "ERROR" if failed
+- `metadata.service`: OpenStack service (cinder, manila, glance, etc.)
+- `metadata.plugin`: Tempest plugin name
+- `metadata.coverage_status`: COMPLETE (no gaps), PARTIAL (some gaps), MISSING (no coverage)
+- `metadata.gaps_identified`: Number of focused tests recommended
+- `metadata.priority_breakdown`: Count by priority (HIGH/MEDIUM/LOW)
+- `metadata.effort_estimate_hours`: Total estimated implementation hours
+- `metadata.existing_test_files`: Test files found with coverage (both main Tempest and plugin)
+- `metadata.recommended_repository`: Where to implement new tests
+- `metadata.analysis_summary`: One-sentence summary of findings
+- `errors`: Array of error messages (empty if success)
+
+**Error Status Example:**
+```json
+{
+  "ticket_id": "OSPRH-22613",
+  "stage_completed": "ANALYZED",
+  "status": "ERROR",
+  "metadata": {},
+  "errors": [
+    "Jira ticket not found",
+    "Service could not be determined from ticket"
+  ]
+}
+```
+
+**Exit Code:**
+- Exit with code 0 if `status == "SUCCESS"`
+- Exit with code 1 if `status == "ERROR"`
 
 ---
 

@@ -46,7 +46,33 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
    - If file is empty or malformed, initialize with: `{"version":1,"last_run":null,"tickets":{}}`
    - Parse the JSON to understand current state of all tracked tickets
 
-3. **Load config** from this skill's `config.json` for approval settings, JQL defaults, etc.
+3. **Check for incomplete parallel batch (crash recovery):**
+   
+   If `state.parallel_execution_batch` is not null:
+   - A previous orchestrator run crashed mid-batch
+   - Extract batch details: `batch_id`, `started_at`, `stage`, `in_progress` tickets
+   - Calculate time elapsed: `now - started_at`
+   - If elapsed > `config.parallel_execution.batch_timeout_minutes`:
+     - **Batch timed out** - mark all `in_progress` tickets as ERROR:
+       ```json
+       {
+         "stage": "ERROR",
+         "error": {
+           "message": "Parallel batch timeout after crash/restart",
+           "batch_id": "{batch_id}",
+           "stage_when_failed": "{original_stage}",
+           "timeout_minutes": 30
+         }
+       }
+       ```
+     - Clear batch record: `state.parallel_execution_batch = null`
+     - Write state to disk
+   - Otherwise:
+     - **Batch still within timeout** - keep tickets at current stage, will retry
+     - Clear batch record: `state.parallel_execution_batch = null`
+     - Write state to disk
+
+4. **Load config** from this skill's `config.json` for approval settings, JQL defaults, etc.
 
 **Output:**
 - List of ticket IDs to process
@@ -84,14 +110,159 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
 
 ---
 
-### STEP 2: Process Each Ticket Through Stages
+### STEP 1.5: Batch Tickets by Stage
 
-For each ticket, determine its current stage and advance to the next eligible stage. Process tickets **sequentially** (one at a time).
+**Actions:**
+
+1. **Group tickets by current stage:**
+   - Iterate through all tickets from STEP 1
+   - Create a map: `stage → [ticket_id, ticket_id, ...]`
+   - Example: `{"DISCOVERED": ["TICKET-1", "TICKET-2"], "APPROVED": ["TICKET-3", "TICKET-4", "TICKET-5"]}`
+
+2. **Determine execution mode for each stage:**
+   
+   For each stage group:
+   
+   **Check if stage is parallelizable:**
+   - If stage in `config.parallel_execution.parallelizable_stages` (DISCOVERED, ANALYZED, APPROVED, IMPLEMENTING)
+   - AND `config.parallel_execution.enabled == true`
+   - AND ticket count >= `config.parallel_execution.min_tickets_for_parallel`
+   - → Set execution mode to **PARALLEL**
+   
+   **Otherwise:**
+   - Set execution mode to **SEQUENTIAL**
+   - This applies to:
+     - DevStack stages (CODE_REVIEW, VERIFYING) — VM lock prevents parallel execution
+     - Small batches (< min_tickets_for_parallel)
+     - Parallel execution disabled in config
+
+3. **Output batches:**
+   - Group tickets by (stage, execution_mode)
+   - Example:
+     ```
+     - Batch 1: DISCOVERED (2 tickets, PARALLEL)
+     - Batch 2: APPROVED (5 tickets, PARALLEL)
+     - Batch 3: CODE_REVIEW (1 ticket, SEQUENTIAL)
+     - Batch 4: VERIFYING (1 ticket, SEQUENTIAL)
+     ```
+
+**Tool Usage:**
+- Dictionary/map operations
+- Config lookups
+
+**Output:**
+- List of batches with execution mode
+- Each batch: {stage, tickets, execution_mode}
+
+---
+
+### STEP 2: Process Each Batch Through Stages
+
+For each batch from STEP 1.5, process tickets based on execution mode:
+- **PARALLEL:** Spawn multiple skill/agent invocations concurrently (I/O-bound stages)
+- **SEQUENTIAL:** Process tickets one at a time (DevStack stages with VM lock)
 
 **IMPORTANT:** Only advance ONE stage per ticket per orchestrator run. This ensures:
 - Each stage's output can be reviewed before proceeding
 - State is checkpointed reliably
 - Errors are caught early
+
+---
+
+#### Execution Mode: PARALLEL
+
+**Condition:** Batch has `execution_mode == "PARALLEL"` (stages: DISCOVERED, ANALYZED, APPROVED, IMPLEMENTING)
+
+**Actions:**
+
+1. **Create parallel execution batch record:**
+   ```json
+   {
+     "parallel_execution_batch": {
+       "batch_id": "batch-{ISO-8601-timestamp}",
+       "stage": "{CURRENT_STAGE} → {NEXT_STAGE}",
+       "started_at": "{ISO-8601 timestamp}",
+       "tickets_in_batch": ["TICKET-1", "TICKET-2", ...],
+       "completed": [],
+       "failed": [],
+       "in_progress": ["TICKET-1", "TICKET-2", ...]
+     }
+   }
+   ```
+   Write to state immediately (recovery marker)
+
+2. **Spawn parallel skill/agent invocations** (one per ticket, up to `max_parallel_agents`):
+   
+   For each ticket in batch:
+   - Invoke appropriate stage handler (see stage handlers below)
+   - Run all invocations concurrently using multiple tool calls in one message
+   - Each skill/agent returns structured output
+   
+   **Wait for all to complete** (blocking, with timeout = `config.parallel_execution.batch_timeout_minutes`)
+
+3. **Collect structured outputs:**
+   - Parse each ticket's result
+   - Track: completed successfully, failed with error, deferred (VM locked)
+
+4. **Update state for each ticket:**
+   - For successful tickets: advance to next stage, update fields
+   - For failed tickets: set stage to ERROR with details
+   - For deferred tickets: keep at current stage (retry next run)
+   - Update batch record: move tickets from `in_progress` to `completed` or `failed`
+
+5. **Clear batch record and checkpoint:**
+   ```json
+   {
+     "parallel_execution_batch": null
+   }
+   ```
+   Write full state to disk
+
+6. **Handle batch timeout:**
+   - If batch doesn't complete within `batch_timeout_minutes`:
+     - Mark all `in_progress` tickets as ERROR
+     - Error message: "Parallel batch timeout after {timeout} minutes"
+     - Clear batch record
+     - Checkpoint state
+     - Continue to next batch
+
+**Tool Usage:**
+- Skill tool (for skill-based stages)
+- Agent tool (for agent-based stages)
+- Multiple tool calls in one message (parallel execution)
+- State file writes (checkpointing)
+
+---
+
+#### Execution Mode: SEQUENTIAL
+
+**Condition:** Batch has `execution_mode == "SEQUENTIAL"` (DevStack stages, small batches, or parallel disabled)
+
+**Actions:**
+
+1. **Process tickets one at a time:**
+   - For each ticket in batch:
+     - Invoke appropriate stage handler (see stage handlers below)
+     - Wait for completion
+     - Update ticket state
+     - Checkpoint state to disk
+     - Continue to next ticket
+
+2. **No batch record needed:**
+   - Sequential execution doesn't need crash recovery batch tracking
+   - Each ticket checkpointed individually
+
+**Tool Usage:**
+- Skill tool (for skill-based stages)
+- Agent tool (for agent-based stages)
+- One tool call at a time (sequential execution)
+- State file writes after each ticket
+
+---
+
+#### Stage Handlers
+
+Below are the stage-specific handlers referenced by both PARALLEL and SEQUENTIAL execution modes. Each handler defines the transition logic for advancing a ticket from one stage to the next.
 
 #### Stage Handler: DISCOVERED → ANALYZED
 
@@ -162,57 +333,24 @@ For each ticket, determine its current stage and advance to the next eligible st
 
 ---
 
-#### Stage Handler: AWAITING_APPROVAL → APPROVED / REJECTED / TIMED_OUT
+#### Stage Handler: AWAITING_APPROVAL (delegated to approval-monitor)
 
 **Condition:** Ticket is at stage `AWAITING_APPROVAL`
 
 **Actions:**
-1. **Check deadline first:**
-   - Parse `approval_deadline` from state
-   - If current time > deadline:
-     - Set stage to `TIMED_OUT`
-     - Checkpoint and continue to next ticket
 
-2. **Fetch Jira ticket comments via MCP:**
-   ```
-   Use mcp__mcp-atlassian__get_issue with issue_key=TICKET-ID
-   Request the comments field
-   ```
+**Skip this ticket.** The `approval-monitor` agent owns this stage and runs independently on a durable 4-hour cron schedule created by the `post-test-plan` skill.
 
-3. **Filter comments:**
-   - Only consider comments posted AFTER `plan_posted_at`
-   - Ignore comments by automation/bot users (if identifiable)
+When the approval-monitor detects a decision (approved, rejected, or timed out), it updates the state file directly. The next orchestrator run will see the ticket at its new stage (`APPROVED`, `REJECTED`, or `TIMED_OUT`) and process it accordingly.
 
-4. **Check for rejection keywords:**
-   - Search each comment body (case-insensitive) for: `rejected`, `not approved`, `decline`
-   - If found:
-     - Record rejector and timestamp
-     - Set stage to `REJECTED`
-     - Checkpoint and continue
-
-5. **Check for approval keywords:**
-   - Search each comment body (case-insensitive) for: `approved`, `LGTM`, `looks good`
-   - If found:
-     - Record approver and timestamp
-     - Set stage to `APPROVED`
-     - Checkpoint and continue
-
-6. **No decision yet:**
-   - Increment `approval_checks` counter
-   - Update `last_check` to current timestamp
-   - Stage stays at `AWAITING_APPROVAL`
-   - Checkpoint and continue
-
-**State update on approval:**
-```json
-{
-  "stage": "APPROVED",
-  "entered_stage_at": "<current ISO-8601 timestamp>",
-  "approved_by": "<comment author>",
-  "approved_at": "<comment timestamp>",
-  "history": [..., {"stage": "APPROVED", "at": "<timestamp>"}]
-}
 ```
+# Orchestrator action for AWAITING_APPROVAL tickets:
+Log: "Ticket {ticket_id}: AWAITING_APPROVAL — monitored by approval-monitor agent (check #{n}, last checked: {last_check})"
+No further action. Continue to next ticket.
+```
+
+**If approval monitoring was NOT scheduled** (e.g., plan was posted manually without the skill, or cron creation failed):
+- Inform the user in the summary: "⚠️ {ticket_id} is awaiting approval but no automatic monitoring is active. Use `/post-test-plan {ticket_id}` to re-post and activate monitoring, or manually advance with `--reset-to APPROVED` once approved."
 
 ---
 
@@ -256,9 +394,70 @@ For each ticket, determine its current stage and advance to the next eligible st
 
 ---
 
-#### Stage Handler: IMPLEMENTING → VERIFYING
+#### Stage Handler: IMPLEMENTING → CODE_REVIEW
 
-**Condition:** Ticket is at stage `IMPLEMENTING`
+**Condition:** Ticket is at stage `IMPLEMENTING` (implementation complete)
+
+**Actions:**
+1. Read implementation details from ticket state (`implementation_details` field)
+2. Invoke the code review agent:
+   ```
+   Use Agent tool with:
+   subagent_type: code-reviewer
+   description: Review Tempest tests for {TICKET-ID}
+   prompt: """
+   Review Tempest tests for {TICKET-ID}.
+   
+   Repository: {implementation_details.repository_path}
+   Branch: {implementation_details.branch}
+   Service: {implementation_details.service}
+   
+   Validate against TEMPEST_STANDARDS.md:
+   1. Base class usage (no unittest.TestCase)
+   2. Client usage (no raw HTTP - requests, urllib)
+   3. Waiter usage (no time.sleep)
+   4. Cleanup patterns (addCleanup required)
+   5. Required decorators (@idempotent_id, @attr)
+   6. Test independence (no shared state)
+   7. Naming conventions
+   
+   Return structured JSON with violations and suggested fixes.
+   """
+   ```
+3. Wait for agent to complete
+4. Parse agent result — look for:
+   - `review_status`: `PASSED` or `FAILED`
+   - Violation count and severity
+   - Feedback JSON (if failed)
+4. Update ticket state:
+   ```json
+   {
+     "stage": "CODE_REVIEW",
+     "entered_stage_at": "<current ISO-8601 timestamp>",
+     "code_review_attempt": 1,
+     "code_review_result": {
+       "status": "PASSED|FAILED",
+       "violations": 0,
+       "reviewed_files": [...]
+     },
+     "history": [..., {"stage": "CODE_REVIEW", "at": "<timestamp>"}]
+   }
+   ```
+5. **Checkpoint:** Write state to disk immediately
+6. **Determine next stage immediately:**
+   - If `review_status == "PASSED"`: transition to `VERIFYING`
+   - If `review_status == "FAILED"` AND `code_review_attempt < config.code_review.max_retry_cycles`: transition to `FIX_IN_PROGRESS` with `fix_context.source = "code_review"`
+   - If `review_status == "FAILED"` AND retries exhausted: transition to `CODE_REVIEW_FAILED`
+
+**If code review skill fails (crash, etc.):**
+- Set stage to `ERROR` with `stage_when_failed: "IMPLEMENTING"` and error details
+- Continue to next ticket
+
+---
+
+#### Stage Handler: CODE_REVIEW → VERIFYING
+
+**Condition:** Ticket is at stage `CODE_REVIEW` with `code_review_result.status == "PASSED"`
 
 **Actions:**
 1. Read implementation details from ticket state (`implementation_details` field)
@@ -290,14 +489,14 @@ For each ticket, determine its current stage and advance to the next eligible st
 6. **Checkpoint:** Write state to disk immediately
 7. **Determine next stage immediately** (do NOT wait for next orchestrator run):
    - If `verification_status == "PASSED"`: transition to `VERIFIED`
-   - If `verification_status == "DEFERRED"`: the VM is locked by another ticket. Keep the ticket at `IMPLEMENTING` stage — do NOT advance, do NOT error. The next orchestrator run will retry automatically.
+   - If `verification_status == "DEFERRED"`: the VM is locked by another ticket. Keep the ticket at `CODE_REVIEW` stage — do NOT advance, do NOT error. The next orchestrator run will retry automatically.
    - If `verification_status == "DEPLOYMENT_FAILED"`: transition to `ERROR` with `error_type: "deployment_failure"` — do NOT trigger fix+retry loop (this is an infrastructure issue, not a test code issue). Post Jira comment with deployment error details.
    - If `verification_status == "SKIPPED"`: transition to `VERIFICATION_SKIPPED` — the environment cannot be deployed on DevStack (e.g., requires Ceph, multi-node, SR-IOV). Post Jira comment explaining what manual verification is needed.
-   - If `verification_status == "FAILED"` AND `verification_attempt < config.verification.max_retry_cycles + 1`: transition to `FIX_IN_PROGRESS`
+   - If `verification_status == "FAILED"` AND `verification_attempt < config.verification.max_retry_cycles + 1`: transition to `FIX_IN_PROGRESS` with `fix_context.source = "devstack_verification"`
    - If `verification_status == "FAILED"` AND retries exhausted: transition to `VERIFICATION_FAILED`
 
 **If verification skill fails (crash, SSH error, etc.):**
-- Set stage to `ERROR` with `stage_when_failed: "IMPLEMENTING"` and error details
+- Set stage to `ERROR` with `stage_when_failed: "CODE_REVIEW"` and error details
 - Continue to next ticket
 
 ---
@@ -330,6 +529,49 @@ For each ticket, determine its current stage and advance to the next eligible st
 
 ---
 
+#### Stage Handler: CODE_REVIEW → FIX_IN_PROGRESS
+
+**Condition:** Ticket is at stage `CODE_REVIEW` with `code_review_result.status == "FAILED"` AND `code_review_attempt < config.code_review.max_retry_cycles`
+
+**Actions:**
+1. Extract violations from code review result (`code_review_result.violations`)
+2. Update ticket state:
+   ```json
+   {
+     "stage": "FIX_IN_PROGRESS",
+     "entered_stage_at": "<current ISO-8601 timestamp>",
+     "fix_context": {
+       "source": "code_review",
+       "violations": [...],
+       "suggested_fixes": [...],
+       "reviewed_files": [...]
+     },
+     "history": [..., {"stage": "FIX_IN_PROGRESS", "at": "<timestamp>"}]
+   }
+   ```
+3. **Checkpoint:** Write state to disk immediately
+
+---
+
+#### Stage Handler: CODE_REVIEW → CODE_REVIEW_FAILED
+
+**Condition:** Ticket is at stage `CODE_REVIEW` with `code_review_result.status == "FAILED"` AND `code_review_attempt >= config.code_review.max_retry_cycles`
+
+**Actions:**
+1. Update ticket state:
+   ```json
+   {
+     "stage": "CODE_REVIEW_FAILED",
+     "entered_stage_at": "<current ISO-8601 timestamp>",
+     "failure_summary": "{violation_count} violations after {attempt_count} attempt(s)",
+     "final_violations": [...],
+     "history": [..., {"stage": "CODE_REVIEW_FAILED", "at": "<timestamp>"}]
+   }
+   ```
+2. **Checkpoint:** Write state to disk immediately
+
+---
+
 #### Stage Handler: VERIFYING → FIX_IN_PROGRESS
 
 **Condition:** Ticket is at stage `VERIFYING` with `verification_result.status == "FAILED"` AND `verification_attempt == 1`
@@ -342,6 +584,7 @@ For each ticket, determine its current stage and advance to the next eligible st
      "stage": "FIX_IN_PROGRESS",
      "entered_stage_at": "<current ISO-8601 timestamp>",
      "fix_context": {
+       "source": "devstack_verification",
        "failed_tests": [...],
        "suggested_fixes": [...],
        "environment_info": {...}
@@ -353,9 +596,9 @@ For each ticket, determine its current stage and advance to the next eligible st
 
 ---
 
-#### Stage Handler: FIX_IN_PROGRESS → VERIFYING (Retry Cycle)
+#### Stage Handler: FIX_IN_PROGRESS → CODE_REVIEW (Retry Cycle - Code Review)
 
-**Condition:** Ticket is at stage `FIX_IN_PROGRESS`
+**Condition:** Ticket is at stage `FIX_IN_PROGRESS` with `fix_context.source == "code_review"`
 
 **Actions:**
 1. Read fix context from ticket state (`fix_context` field)
@@ -364,7 +607,65 @@ For each ticket, determine its current stage and advance to the next eligible st
    Use Skill tool to invoke: implement-tempest-tests
    Pass arguments: TICKET-ID --fix-context '{fix_context_json}'
    ```
-   The fix context tells the implementation skill exactly what failed and what to fix.
+   The fix context tells the implementation skill to fix Tempest standard violations.
+3. Wait for re-implementation to complete
+4. Re-invoke the code review agent:
+   ```
+   Use Agent tool with:
+   subagent_type: code-reviewer
+   description: Re-review Tempest tests for {TICKET-ID} after fixes
+   prompt: """
+   Re-review Tempest tests for {TICKET-ID} after fixing violations.
+   
+   Repository: {implementation_details.repository_path}
+   Branch: {implementation_details.branch}
+   Service: {implementation_details.service}
+   
+   Previous violations that should be fixed:
+   {fix_context.violations}
+   
+   Verify these violations are resolved and check for new issues.
+   Return structured JSON comparing current vs. previous violations.
+   """
+   ```
+5. Parse agent re-review result
+6. Update ticket state:
+   ```json
+   {
+     "stage": "CODE_REVIEW",
+     "entered_stage_at": "<current ISO-8601 timestamp>",
+     "code_review_attempt": 2,
+     "code_review_result": {
+       "status": "PASSED|FAILED",
+       "violations": ...,
+       "feedback": ...
+     },
+     "history": [..., {"stage": "CODE_REVIEW", "at": "<timestamp>", "attempt": 2}]
+   }
+   ```
+7. **Checkpoint:** Write state to disk immediately
+8. **Determine next stage immediately:**
+   - If `review_status == "PASSED"`: transition to `VERIFYING`
+   - If `review_status == "FAILED"`: transition to `CODE_REVIEW_FAILED` (max retries exhausted)
+
+**If re-implementation or re-review fails:**
+- Set stage to `ERROR` with `stage_when_failed: "FIX_IN_PROGRESS"` and error details
+- Continue to next ticket
+
+---
+
+#### Stage Handler: FIX_IN_PROGRESS → VERIFYING (Retry Cycle - DevStack)
+
+**Condition:** Ticket is at stage `FIX_IN_PROGRESS` with `fix_context.source == "devstack_verification"`
+
+**Actions:**
+1. Read fix context from ticket state (`fix_context` field)
+2. Re-invoke the implementation skill with fix instructions:
+   ```
+   Use Skill tool to invoke: implement-tempest-tests
+   Pass arguments: TICKET-ID --fix-context '{fix_context_json}'
+   ```
+   The fix context tells the implementation skill to fix runtime test failures.
 3. Wait for re-implementation to complete
 4. Re-invoke the verification skill with `--skip-deploy` (reuse existing DevStack):
    ```
@@ -460,7 +761,7 @@ For each ticket, determine its current stage and advance to the next eligible st
 
 ---
 
-#### Terminal Stages: VERIFIED / VERIFICATION_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
+#### Terminal Stages: VERIFIED / CODE_REVIEW_FAILED / VERIFICATION_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
 
 **Condition:** Ticket is at any terminal stage
 
@@ -472,10 +773,14 @@ For each ticket, determine its current stage and advance to the next eligible st
   - Reset stage to that value
   - Clear error field
   - Re-process through the appropriate stage handler above
+- If `--retry` flag was passed and stage is CODE_REVIEW_FAILED:
+  - Reset stage to `IMPLEMENTING`
+  - Clear code review failure fields
+  - Re-process through implementation and code review
 - If `--retry` flag was passed and stage is VERIFICATION_FAILED:
   - Reset stage to `IMPLEMENTING`
   - Clear failure fields
-  - Re-process through implementation and verification
+  - Re-process through implementation, code review, and verification
 
 ---
 

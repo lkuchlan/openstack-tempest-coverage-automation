@@ -4,7 +4,7 @@
 [![OpenStack](https://img.shields.io/badge/OpenStack-Tempest-red.svg)](https://docs.openstack.org/tempest/latest/)
 [![Claude Code](https://img.shields.io/badge/Claude-Code-purple.svg)](https://claude.ai/code)
 
-Automated OpenStack Tempest test coverage analysis and implementation using Claude Code. Analyzes Jira tickets, discovers existing patterns, implements upstream-compliant tests with automatic validation.
+Automated OpenStack Tempest test coverage analysis and implementation using Claude Code. Analyzes Jira tickets, discovers existing patterns, implements upstream-compliant tests with automatic validation, and monitors stakeholder approval automatically in the background.
 
 ---
 
@@ -35,12 +35,13 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 
 - 🔍 **Automated Jira Analysis** - Fetch tickets via MCP, extract requirements, identify gaps
 - 🧠 **Intelligent Pattern Discovery** - Explore agent finds base classes, clients, waiters automatically
-- 📝 **Upstream-Compliant Generation** - Follows Tempest HACKING guidelines strictly  
+- 📝 **Upstream-Compliant Generation** - Follows Tempest HACKING guidelines strictly
 - ✅ **Automatic Validation** - Runs `tox -e pep8,py3` before commit
 - 🔄 **Git Workflow Automation** - Creates branches, commits with proper messages
 - 🔐 **Optional Jira Integration** - Works with or without Jira MCP
 - 📊 **Structured Reports** - Gap analysis with priorities and effort estimates
 - 🎓 **RBAC, Negative, Scenario Tests** - Comprehensive coverage types
+- 🕐 **Background Approval Monitoring** - Automatically polls Jira every 4 hours for stakeholder approval, no manual re-triggering needed
 
 ---
 
@@ -52,7 +53,7 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 - [Configuration](#-configuration)
 - [Usage](#-usage)
 - [Credential Management](#-credential-management)
-- [Subagent Strategy](#-subagent-strategy)
+- [Agent Architecture](#-agent-architecture)
 - [Documentation](#-documentation)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -84,7 +85,8 @@ claude
 ```
 
 **What happens:**
-- Skills installed to `~/.claude/skills/`
+- Skills installed to `~/.claude/skills/` (5 skills)
+- Agents installed to `~/.claude/agents/` (code-reviewer, approval-monitor)
 - `.env` template created (edit with your credentials)
 - Configuration ready to use
 - Works immediately, even without Jira MCP
@@ -93,32 +95,35 @@ claude
 
 ## 🏗️ Architecture
 
+The system is built from **5 skills** (user-invocable slash commands) and **2 agents** (specialized background workers), connected through a shared state file.
+
 ```
-User Request
-    ↓
-┌─────────────────────────────────────────────┐
-│  /jira-coverage-analysis OSPRH-22613        │
-│  • Fetch ticket (Jira MCP or manual)        │
-│  • Spawn Explore agent (pattern discovery)  │
-│  • Identify gaps with priorities            │
-│  • Estimate effort (hours)                  │
-│  • Generate structured report               │
-└─────────────────────────────────────────────┘
-    ↓
-User Reviews Analysis Report
-    ↓
-┌─────────────────────────────────────────────┐
-│  /implement-tempest-tests OSPRH-22613       │
-│  • Spawn Explore agent (find patterns)      │
-│  • Enter plan mode (if complex)             │
-│  • Generate tests (strict standards)        │
-│  • Create git branch + commit               │
-│  • Validate with tox (pep8 + py3)           │
-│  • Generate final recap                     │
-└─────────────────────────────────────────────┘
-    ↓
-Tests Ready for Review & Push
+USER
+ │  /jira-coverage-analysis  /post-test-plan
+ │  /implement-tempest-tests  /verify-tempest-devstack  /orchestrator
+ ▼
+┌──────────────────────────────────────────────────┐
+│  Skills  (orchestrator invokes these in sequence) │
+│                                                  │
+│  jira-coverage-analysis  →  analyze gaps         │
+│  post-test-plan          →  post to Jira         │
+│                             + schedules ──────►  CronCreate (4h)
+│  implement-tempest-tests →  write tests               │ fires
+│  verify-tempest-devstack →  run on DevStack           ▼
+└──────────────┬───────────────────────────────┐  approval-monitor
+               │ spawns                         │  AGENT
+               ▼                                │  polls Jira
+        code-reviewer AGENT                     │  APPROVED / REJECTED
+        7 Tempest rule checks                   │  / TIMED_OUT
+        ~10s before DevStack                    └──────────────────────
+└─────────────────────────────────────────────────────┘
+               │
+               ▼
+       Shared State: pipeline-state.json
+       Shared Config: config.json
 ```
+
+> See [`docs/architecture.svg`](docs/architecture.svg) and [`docs/pipeline-flow.svg`](docs/pipeline-flow.svg) for full visual diagrams.
 
 ### Five Skills
 
@@ -131,7 +136,7 @@ Tests Ready for Review & Push
 **2. `/post-test-plan`** - Stakeholder Approval
 - **Purpose:** Post test plan to Jira for review before implementing
 - **Speed:** < 1 minute
-- **Output:** Jira comment with duplicate detection
+- **Output:** Jira comment with duplicate detection + automatic approval monitoring scheduled
 - **Use for:** Getting stakeholder sign-off before writing tests
 
 **3. `/implement-tempest-tests`** - Implementation + Validation
@@ -148,9 +153,23 @@ Tests Ready for Review & Push
 
 **5. `/orchestrator`** - Full Pipeline Automation
 - **Purpose:** Automate the entire pipeline end-to-end
-- **Speed:** Hours to days (poll-based approval + verification)
+- **Speed:** Hours to days (background approval monitoring + verification)
 - **Output:** State-tracked pipeline with Jira updates
 - **Use for:** Batch ticket processing, automated workflow
+
+### Two Agents
+
+**`code-reviewer`** - Static Validation (Internal)
+- **Purpose:** Validate implemented tests against Tempest standards before DevStack
+- **Speed:** ~10 seconds
+- **Invoked by:** Orchestrator automatically after implementation
+- **Checks:** 7 rules — base class, clients, waiters, cleanup, decorators, independence, naming
+
+**`approval-monitor`** - Background Approval Polling (Scheduled)
+- **Purpose:** Poll Jira for approval/rejection comments on posted test plans
+- **Speed:** Runs every 4 hours automatically via durable cron
+- **Invoked by:** Scheduled automatically when `post-test-plan` posts a plan
+- **Updates:** Pipeline state file with APPROVED / REJECTED / TIMED_OUT decisions
 
 ### Shared Configuration
 
@@ -180,11 +199,12 @@ cd openstack-tempest-coverage-automation
 
 **What it does:**
 1. Checks Claude Code installed
-2. Creates symlinks to `~/.claude/skills/`
-3. Copies `.env.example` to `.env`
-4. Prompts for repository paths
-5. Validates installation
-6. Prints next steps
+2. Creates symlinks to `~/.claude/skills/` (5 skills)
+3. Creates symlinks to `~/.claude/agents/` (2 agents: code-reviewer, approval-monitor)
+4. Copies `.env.example` to `.env`
+5. Prompts for repository paths
+6. Validates installation
+7. Prints next steps
 
 ### Method 2: Direct Download (Air-gapped)
 
@@ -201,8 +221,8 @@ cd openstack-tempest-coverage-automation-1.0.0
 git clone https://github.com/lkuchlan/openstack-tempest-coverage-automation.git
 cd openstack-tempest-coverage-automation
 
-# Create skills directory
-mkdir -p ~/.claude/skills
+# Create skills and agents directories
+mkdir -p ~/.claude/skills ~/.claude/agents
 
 # Create symlinks (all 5 skills)
 ln -sf "$(pwd)/skills/jira-coverage-analysis" ~/.claude/skills/jira-coverage-analysis
@@ -211,6 +231,11 @@ ln -sf "$(pwd)/skills/post-test-plan" ~/.claude/skills/post-test-plan
 ln -sf "$(pwd)/skills/orchestrator" ~/.claude/skills/orchestrator
 ln -sf "$(pwd)/skills/verify-tempest-devstack" ~/.claude/skills/verify-tempest-devstack
 ln -sf "$(pwd)/skills/shared" ~/.claude/skills/tempest-coverage
+
+# Create symlinks (2 agents)
+ln -sf "$(pwd)/agents/code-reviewer/prompt.md" ~/.claude/agents/code-reviewer.md
+ln -sf "$(pwd)/agents/code-reviewer/rules.json" ~/.claude/agents/code-reviewer-rules.json
+ln -sf "$(pwd)/agents/approval-monitor/prompt.md" ~/.claude/agents/approval-monitor.md
 
 # Copy credential template
 cp examples/.env.example .env
@@ -439,57 +464,45 @@ If you can't or don't want to set up Jira MCP:
 
 ---
 
-## 🤖 Subagent Strategy
+## 🤖 Agent Architecture
 
-These skills use Claude's **Explore agent** intelligently for pattern discovery.
+The system uses two types of components: **skills** (user-invocable slash commands) and **agents** (specialized workers with scoped responsibilities).
 
-### What Gets Delegated to Explore Agent
+### Skills (User-Facing)
 
-**Code Discovery Tasks:**
-- Finding existing test patterns in large codebases
-- Locating base classes and their inheritance hierarchies
-- Discovering service clients and their methods
-- Finding waiter implementations
-- Identifying cleanup patterns
-- Searching for similar tests as templates
+Skills are invoked directly by users with `/skill-name`. They run in the main conversation context and produce human-readable markdown output by default.
 
-**Why Delegated:**
-- Thorough, methodical codebase search
-- Handles large repositories (100+ files) efficiently
-- Frees main agent token budget for analysis/implementation
-- Better pattern matching across multiple repositories
+| Skill | User invocation | Orchestrator invocation |
+|---|---|---|
+| `jira-coverage-analysis` | `/jira-coverage-analysis TICKET` → markdown | `--orchestrator-mode` → JSON |
+| `post-test-plan` | `/post-test-plan TICKET` → markdown | `--orchestrator-mode` → JSON |
+| `implement-tempest-tests` | `/implement-tempest-tests TICKET` → markdown | `--orchestrator-mode` → JSON |
+| `verify-tempest-devstack` | `/verify-tempest-devstack TICKET` → markdown | `--orchestrator-mode` → JSON |
+| `orchestrator` | `/orchestrator --jql "..."` → summary table | — |
 
-### When Explore Agent is Used
+### Agents (Specialized Workers)
 
-**jira-coverage-analysis:**
-- **Step 3:** Discover Existing Coverage
-- **Mode:** Very thorough
-- **Searches:** Existing tests, base classes, patterns
+Agents run with isolated context and scoped tool access. They are never invoked directly by users.
 
-**implement-tempest-tests:**
-- **Step 3:** Discover Implementation Patterns
-- **Mode:** Very thorough
-- **Searches:** Base classes, clients, waiters, templates
+**`code-reviewer`** (tools: Bash, Read)
+- Invoked by the orchestrator after implementation
+- Validates test code against 7 Tempest standard rules
+- Returns structured JSON — never modifies code
 
-### When Explore Agent is Skipped
+**`approval-monitor`** (tools: Bash, Read, MCP)
+- Invoked by a durable 4-hour cron job created by `post-test-plan`
+- Polls Jira for approval/rejection comments on pending test plans
+- Updates the pipeline state file — never touches code or test files
+- Runs automatically in the background without user intervention
 
-- Patterns already in memory from recent analysis
-- User provides specific file paths
-- Quick re-analysis of same ticket
-- Repository structure well-known
+### Explore Agent (Pattern Discovery)
 
-### Performance Impact
+Both `jira-coverage-analysis` and `implement-tempest-tests` spawn an **Explore agent** for codebase search:
 
-**With Explore Agent:**
-- Slightly longer (extra 30-60 seconds)
-- More thorough pattern discovery
-- Higher quality pattern matching
-- Better test implementation
+- **jira-coverage-analysis Step 3:** Search both main Tempest and service plugin repos for existing tests
+- **implement-tempest-tests Step 3:** Find base classes, clients, waiters, and template tests
 
-**Without (when skipped):**
-- Faster execution
-- Uses cached patterns from memory
-- Same quality if patterns already known
+The Explore agent is thorough and handles large repositories (100+ files) efficiently, freeing the main agent's token budget for analysis and implementation. It adds 30-60 seconds but significantly improves pattern matching quality.
 
 ---
 
@@ -504,6 +517,11 @@ These skills use Claude's **Explore agent** intelligently for pattern discovery.
 - **[EXAMPLES.md](docs/EXAMPLES.md)** - Real-world workflow examples
 - **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System design overview
 - **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+
+### Diagrams
+
+- **[architecture.svg](docs/architecture.svg)** - System architecture (skills, agents, shared state)
+- **[pipeline-flow.svg](docs/pipeline-flow.svg)** - Full pipeline state machine with all transitions
 
 ### Project Documentation
 

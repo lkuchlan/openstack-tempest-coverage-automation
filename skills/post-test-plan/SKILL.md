@@ -29,13 +29,26 @@ This skill takes a test coverage analysis (from `/jira-coverage-analysis`) and p
 ### STEP 1: Get Analysis Report
 
 **Actions:**
-1. Check if analysis exists for this ticket
+1. **Parse arguments and detect orchestrator mode:**
+   - Check if `--orchestrator-mode` flag is provided
+   - If YES:
+     - Set `orchestrator_mode = true`
+     - Minimize verbose output (no user prompts)
+     - Return structured JSON only at the end (see after STEP 4)
+     - Analysis must be provided (no interactive prompts)
+   - If NO:
+     - Set `orchestrator_mode = false`
+     - Normal user-facing behavior
+
+2. Check if analysis exists for this ticket
    - Look in memory for recent analysis
    - Check if user just ran `/jira-coverage-analysis`
-2. If no analysis found:
-   - Ask user: "Should I run analysis first?"
-   - If yes: Run analysis internally
-   - If no: Ask user to provide test plan manually
+
+3. If no analysis found:
+   - **If `orchestrator_mode == true`**: Return ERROR (analysis required for orchestrator mode)
+   - **If `orchestrator_mode == false`**: Ask user: "Should I run analysis first?"
+     - If yes: Run analysis internally
+     - If no: Ask user to provide test plan manually
 
 **Tool Usage:**
 - Memory (recall recent analysis)
@@ -292,6 +305,41 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 
 ---
 
+### STEP 3.5: Schedule Approval Monitoring (after successful post)
+
+**Condition:** Only run this step if STEP 3 successfully posted the plan to Jira.
+
+**Actions:**
+
+Create a durable cron job that will invoke the `approval-monitor` agent every 4 hours to check for approval/rejection comments:
+
+```
+Use CronCreate with:
+  cron: "0 */4 * * *"
+  durable: true
+  recurring: true
+  prompt: "Invoke the approval-monitor agent to check all AWAITING_APPROVAL tickets in the Tempest coverage pipeline for Jira approval/rejection comments."
+  reason: "Polling Jira for test plan approval on pending tickets"
+```
+
+Log the result: `"✅ Approval monitoring scheduled (checks every 4 hours, auto-expires in 7 days)"`
+
+**If in orchestrator mode:**
+- Include the fact that monitoring was scheduled in the JSON output (`"approval_monitoring_scheduled": true`)
+
+**If CronCreate fails:**
+- Log a warning but do NOT fail the skill — the plan was posted successfully
+- Inform the user: "⚠️ Could not schedule automatic approval monitoring. Run `/orchestrator --status` periodically to check approval status manually."
+
+**Tool Usage:**
+- CronCreate
+
+**Output:**
+- Cron job created for approval monitoring
+- Or: warning that scheduling failed (plan posting still succeeded)
+
+---
+
 ### STEP 4: Save Metadata
 
 **Actions:**
@@ -307,6 +355,64 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 
 **Output:**
 - Metadata saved for future reference
+
+---
+
+### Orchestrator Mode: Structured JSON Output
+
+**When `--orchestrator-mode` flag is provided:**
+
+Skip user-facing report and return structured JSON only:
+
+```json
+{
+  "ticket_id": "OSPRH-22613",
+  "stage_completed": "AWAITING_APPROVAL",
+  "status": "SUCCESS|ERROR",
+  "metadata": {
+    "plan_posted": true,
+    "plan_posted_at": "2026-05-19T14:30:00Z",
+    "jira_comment_id": "12345",
+    "plan_url": "https://jira.example.com/browse/OSPRH-22613#comment-12345",
+    "approval_deadline": "2026-05-26T14:30:00Z",
+    "plan_summary": "3 tests proposed for volume multiattach coverage",
+    "approval_monitoring_scheduled": true
+  },
+  "errors": []
+}
+```
+
+**Field Descriptions:**
+- `ticket_id`: Jira ticket ID
+- `stage_completed`: Always "AWAITING_APPROVAL" (orchestrator stage tracking)
+- `status`: "SUCCESS" if posted, "ERROR" if failed
+- `metadata.plan_posted`: Boolean (true if posted to Jira, false if manual fallback)
+- `metadata.plan_posted_at`: ISO-8601 timestamp when posted
+- `metadata.jira_comment_id`: Jira comment ID (if posted)
+- `metadata.plan_url`: Direct URL to Jira comment (if posted)
+- `metadata.approval_deadline`: Deadline for approval (posted_at + config.approval.timeout_days)
+- `metadata.plan_summary`: One-sentence summary of plan
+- `errors`: Array of error messages (empty if success)
+
+**Error Status Example:**
+```json
+{
+  "ticket_id": "OSPRH-22613",
+  "stage_completed": "AWAITING_APPROVAL",
+  "status": "ERROR",
+  "metadata": {
+    "plan_posted": false
+  },
+  "errors": [
+    "Jira MCP not available",
+    "Could not post comment to Jira"
+  ]
+}
+```
+
+**Exit Code:**
+- Exit with code 0 if `status == "SUCCESS"`
+- Exit with code 1 if `status == "ERROR"`
 
 ---
 

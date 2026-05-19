@@ -56,6 +56,11 @@ echo -e "${BLUE}Installing skills to: ${YELLOW}$SKILLS_DIR${NC}"
 mkdir -p "$SKILLS_DIR"
 echo -e "${GREEN}✓${NC} Skills directory ready"
 
+# Create agents directory
+AGENTS_DIR="$HOME/.claude/agents"
+mkdir -p "$AGENTS_DIR"
+echo -e "${GREEN}✓${NC} Agents directory ready"
+
 # Install skills via symlinks
 echo ""
 echo -e "${BLUE}📦 Installing skills...${NC}"
@@ -128,6 +133,28 @@ else
         echo -e "${YELLOW}⚠️  verify-tempest-devstack not found${NC}"
     fi
 fi
+
+# Install agents via symlinks
+echo ""
+echo -e "${BLUE}🤖 Installing agents...${NC}"
+
+if [ -f "$REPO_ROOT/agents/code-reviewer/prompt.md" ]; then
+    ln -sf "$REPO_ROOT/agents/code-reviewer/prompt.md" "$AGENTS_DIR/code-reviewer.md"
+    ln -sf "$REPO_ROOT/agents/code-reviewer/rules.json" "$AGENTS_DIR/code-reviewer-rules.json"
+    echo -e "${GREEN}✓${NC} code-reviewer"
+else
+    echo -e "${YELLOW}⚠️  code-reviewer agent not found${NC}"
+fi
+
+if [ -f "$REPO_ROOT/agents/approval-monitor/prompt.md" ]; then
+    ln -sf "$REPO_ROOT/agents/approval-monitor/prompt.md" "$AGENTS_DIR/approval-monitor.md"
+    echo -e "${GREEN}✓${NC} approval-monitor"
+else
+    echo -e "${YELLOW}⚠️  approval-monitor agent not found${NC}"
+fi
+
+echo ""
+echo -e "${BLUE}📦 Installing skills...${NC}"
 
 # Shared config
 if [ -d "$REPO_ROOT/skills/shared" ]; then
@@ -232,6 +259,20 @@ if [ -d "$SKILLS_DIR/verify-tempest-devstack" ]; then
     echo -e "${GREEN}✓${NC} verify-tempest-devstack skill installed"
 else
     echo -e "${RED}✗${NC} verify-tempest-devstack skill NOT found"
+    VALIDATION_OK=false
+fi
+
+if [ -f "$AGENTS_DIR/code-reviewer.md" ]; then
+    echo -e "${GREEN}✓${NC} code-reviewer agent installed"
+else
+    echo -e "${RED}✗${NC} code-reviewer agent NOT found"
+    VALIDATION_OK=false
+fi
+
+if [ -f "$AGENTS_DIR/approval-monitor.md" ]; then
+    echo -e "${GREEN}✓${NC} approval-monitor agent installed"
+else
+    echo -e "${RED}✗${NC} approval-monitor agent NOT found"
     VALIDATION_OK=false
 fi
 

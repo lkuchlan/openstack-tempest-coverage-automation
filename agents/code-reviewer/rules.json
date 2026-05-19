@@ -1,0 +1,106 @@
+{
+  "rules": {
+    "base_class": {
+      "severity": "ERROR",
+      "description": "Tests must inherit from proper Tempest base classes",
+      "allowed_base_classes": [
+        "BaseVolumeTest",
+        "BaseVolumeAdminTest",
+        "BaseBackupsTest",
+        "BaseSnapshotsTest",
+        "BaseSharesTest",
+        "BaseSharesAdminTest",
+        "BaseSharesRbacTest",
+        "BaseImageTest",
+        "BaseImageAdminTest",
+        "BaseV2ComputeTest",
+        "BaseV2ComputeAdminTest",
+        "BaseNetworkTest",
+        "BaseAdminNetworkTest",
+        "BaseTestCase",
+        "ScenarioTest"
+      ],
+      "forbidden_base_classes": [
+        "unittest.TestCase",
+        "object",
+        "TestCase"
+      ]
+    },
+    "client_usage": {
+      "severity": "ERROR",
+      "description": "Tests must use Tempest service clients, not raw HTTP libraries",
+      "forbidden_imports": [
+        "requests",
+        "urllib",
+        "http.client",
+        "urllib3"
+      ],
+      "forbidden_patterns": [
+        "requests\\.",
+        "urllib\\.",
+        "http\\.client",
+        "urllib3\\."
+      ]
+    },
+    "waiter_usage": {
+      "severity": "ERROR",
+      "description": "Tests must use Tempest waiters, not time.sleep()",
+      "forbidden_patterns": [
+        "time\\.sleep\\("
+      ],
+      "required_patterns": [
+        "waiters\\.wait_for_"
+      ]
+    },
+    "cleanup": {
+      "severity": "ERROR",
+      "description": "Direct API calls must have proper cleanup within 3 lines",
+      "check_direct_api_calls": true,
+      "max_lines_to_cleanup": 3,
+      "cleanup_patterns": [
+        "self\\.addCleanup\\(",
+        "cls\\.addClassResourceCleanup\\("
+      ]
+    },
+    "decorators": {
+      "severity": "ERROR",
+      "description": "All test methods must have required decorators",
+      "required": [
+        "idempotent_id",
+        "attr"
+      ]
+    },
+    "test_independence": {
+      "severity": "ERROR",
+      "description": "Tests must be independent, no shared class-level state",
+      "forbidden_patterns": [
+        "@classmethod",
+        "setUpClass",
+        "cls\\.\\w+\\s*="
+      ],
+      "exceptions": [
+        "skip_checks",
+        "resource_setup",
+        "setup_clients",
+        "setup_credentials"
+      ]
+    },
+    "naming": {
+      "severity": "WARNING",
+      "description": "Test methods and classes should follow naming conventions",
+      "test_method_pattern": "^test_\\w+_\\w+",
+      "test_class_pattern": "^\\w+Test$",
+      "generic_names": [
+        "test_1",
+        "test_2",
+        "test_volume",
+        "test_share",
+        "MyTest",
+        "TestClass"
+      ]
+    }
+  },
+  "output_format": "json",
+  "fail_on_warnings": false,
+  "reference_doc": "../../references/TEMPEST_STANDARDS.md"
+}

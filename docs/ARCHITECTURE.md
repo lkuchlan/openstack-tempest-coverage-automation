@@ -5,48 +5,61 @@ Overview of the OpenStack Tempest Coverage Automation system design.
 ## High-Level Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        User (Claude Code)                    │
-└───────────────────────┬─────────────────────────────────────┘
-                        │
-           ┌────────────┼────────────────────┐
-           │            │                    │
-    ┌──────▼──────┐ ┌──▼───────────┐ ┌──────▼──────┐
-    │  Analysis   │ │Implementat   │ │  DevStack   │
-    │   Skill     │ │ ion Skill    │ │ Verify Skill│
-    └──────┬──────┘ └──────┬───────┘ └──────┬──────┘
-           │               │                 │
-           │               │           ┌─────▼─────┐
-           │               │           │ SSH to VM  │
-           │               │           │ (DevStack) │
-           │               │           └─────┬──────┘
-    ┌──────▼───────────────▼─────────────────▼──────┐
-    │       Shared Configuration                     │
-    │    (Service mappings, patterns, DevStack)      │
-    └──────┬─────────────────────────┬───────────────┘
-           │                         │
-    ┌──────▼──────┐          ┌──────▼──────┐
-    │   Explore   │          │   Tempest   │
-    │   Agent     │          │  Repos      │
-    └─────────────┘          └─────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  USER                                                        │
+│  /jira-coverage-analysis  /post-test-plan                    │
+│  /implement-tempest-tests /verify-tempest-devstack           │
+│  /orchestrator                                               │
+└──────────────────┬───────────────────────────────────────────┘
+                   │ invokes skills directly
+                   ▼
+    ┌──────────────────────────────────────────┐
+    │           Skills (user-facing)            │
+    │  jira-coverage-analysis                  │
+    │  post-test-plan  ──────────────────────► CronCreate (durable, 4h)
+    │  implement-tempest-tests                 │        │
+    │  verify-tempest-devstack                 │        │ fires
+    │  orchestrator (invokes skills + agents)  │        ▼
+    └──────────────┬───────────────────────────┘  ┌─────────────────┐
+                   │ spawns agents                 │ approval-monitor│
+                   │                               │ (AGENT)         │
+                   ▼                               │ Bash, Read, MCP │
+    ┌──────────────────────────┐                   │                 │
+    │   code-reviewer (AGENT)  │                   │ reads/writes    │
+    │   Bash, Read             │                   │ pipeline state  │
+    │   7 Tempest rule checks  │                   └─────────────────┘
+    └──────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────┐
+    │                  Shared State                            │
+    │   ~/.claude/orchestrator-state/pipeline-state.json       │
+    └──────────────────────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────────────────────┐
+    │                  Shared Configuration                    │
+    │   ~/.claude/skills/tempest-coverage/config.json          │
+    │   (service mappings, patterns, approval keywords)        │
+    └──────────────────────────────────────────────────────────┘
 ```
 
 ## Components
 
-### Skills
+### Skills (User-Facing)
+
+Skills are invoked with `/skill-name` and produce markdown output for humans. They also support `--orchestrator-mode` to return structured JSON when called programmatically by the orchestrator.
 
 **jira-coverage-analysis:**
 - Purpose: Identify test coverage gaps
 - Input: Jira ticket ID or manual requirements
 - Process: Fetch → Explore → Analyze → Report
-- Output: Structured markdown report
+- Output: Structured markdown report (or JSON in orchestrator mode)
 - Speed: < 5 minutes
 
 **implement-tempest-tests:**
 - Purpose: Generate production-ready tests
 - Input: Requirements (from analysis or manual)
 - Process: Explore → Plan → Implement → Validate → Commit
-- Output: Validated code + git commit + recap
+- Output: Validated code + git commit + recap (or JSON in orchestrator mode)
 - Speed: 5-10 minutes
 
 **verify-tempest-devstack:**
@@ -55,6 +68,24 @@ Overview of the OpenStack Tempest Coverage Automation system design.
 - Process: Parse tests → Deploy DevStack → Install Tempest → Run tests → Collect results
 - Output: Verification report + structured feedback (on failure)
 - Speed: 35-90 minutes (includes DevStack deployment)
+
+### Agents (Specialized Workers)
+
+Agents run with isolated context and restricted tool access. They are invoked programmatically, never directly by users.
+
+**code-reviewer:**
+- Tools: Bash, Read (read-only — cannot write files)
+- Purpose: Static validation of Tempest tests against 7 upstream rules
+- Invoked by: Orchestrator after implementation stage
+- Output: Structured JSON with violations and suggested fixes
+- Speed: ~10 seconds
+
+**approval-monitor:**
+- Tools: Bash, Read, MCP Jira (read/write state only — cannot touch code)
+- Purpose: Poll Jira for approval/rejection on pending test plans
+- Invoked by: Durable CronCreate job (every 4 hours), created automatically by post-test-plan
+- Output: Updated pipeline state file (APPROVED / REJECTED / TIMED_OUT)
+- Auto-expires: After 7 days (matches approval timeout window)
 
 ### Shared Configuration
 
@@ -202,6 +233,34 @@ Skills use Claude Code memory for:
 4. MCP handles authentication securely
 
 **No credentials in code or git history**
+
+## Approval Monitoring Flow
+
+```
+post-test-plan posts plan to Jira
+    │
+    └── CronCreate(durable=true, cron="0 */4 * * *")
+              │
+              │  fires every 4 hours
+              ▼
+        approval-monitor agent
+              │
+              ├── Read pipeline-state.json
+              ├── Find AWAITING_APPROVAL tickets
+              │
+              ├── For each ticket:
+              │     ├── Check deadline → TIMED_OUT?
+              │     ├── Fetch Jira comments via MCP
+              │     ├── rejection keywords → REJECTED
+              │     └── approval keywords  → APPROVED
+              │
+              └── Write updated state back to pipeline-state.json
+
+orchestrator (next run)
+    └── Sees APPROVED tickets → invokes implement-tempest-tests
+```
+
+The orchestrator does **not** poll Jira for approvals. It reads state and acts on tickets already advanced by the approval-monitor.
 
 ## Extension Points
 

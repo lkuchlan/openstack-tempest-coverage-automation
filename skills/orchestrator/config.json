@@ -9,6 +9,24 @@
     "approval_keywords": ["approved", "LGTM", "looks good", "Approved"],
     "rejection_keywords": ["rejected", "not approved", "decline", "Rejected"]
   },
+  "code_review": {
+    "enabled": true,
+    "max_retry_cycles": 1,
+    "fail_fast_on_errors": true,
+    "skip_warnings": false
+  },
+  "parallel_execution": {
+    "enabled": true,
+    "max_parallel_agents": 5,
+    "min_tickets_for_parallel": 2,
+    "batch_timeout_minutes": 30,
+    "parallelizable_stages": [
+      "DISCOVERED",
+      "ANALYZED",
+      "APPROVED",
+      "IMPLEMENTING"
+    ]
+  },
   "stages": {
     "DISCOVERED": "Ticket found via JQL or manual input",
     "ANALYZED": "Coverage analysis completed",
@@ -16,9 +34,11 @@
     "AWAITING_APPROVAL": "Waiting for stakeholder approval in Jira",
     "APPROVED": "Plan approved, ready for implementation",
     "IMPLEMENTING": "Test implementation in progress",
+    "CODE_REVIEW": "Code review completed (checking Tempest standards)",
     "VERIFYING": "Tests being verified against DevStack",
-    "FIX_IN_PROGRESS": "Re-implementing tests after verification failure",
+    "FIX_IN_PROGRESS": "Re-implementing tests after code review or verification failure",
     "VERIFIED": "Tests passed on real DevStack environment",
+    "CODE_REVIEW_FAILED": "Code review failed after retry cycle exhausted",
     "VERIFICATION_FAILED": "Tests failed after retry cycle exhausted",
     "VERIFICATION_SKIPPED": "Tests cannot be verified on DevStack (requires specific backend/hardware/multi-node)",
     "REJECTED": "Plan rejected by stakeholder",
