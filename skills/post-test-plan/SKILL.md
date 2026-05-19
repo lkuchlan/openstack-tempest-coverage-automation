@@ -311,32 +311,47 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
 
 **Actions:**
 
-Create a durable cron job that will invoke the `approval-monitor` agent every 4 hours to check for approval/rejection comments:
+1. **Check if an approval-monitor cron job already exists:**
 
-```
-Use CronCreate with:
-  cron: "0 */4 * * *"
-  durable: true
-  recurring: true
-  prompt: "Invoke the approval-monitor agent to check all AWAITING_APPROVAL tickets in the Tempest coverage pipeline for Jira approval/rejection comments."
-  reason: "Polling Jira for test plan approval on pending tickets"
-```
+   ```
+   Use CronList → inspect all scheduled jobs
+   ```
 
-Log the result: `"✅ Approval monitoring scheduled (checks every 4 hours, auto-expires in 7 days)"`
+   Search the returned jobs for one whose `prompt` contains `"approval-monitor"`.
+
+   - **If found:** Log `"ℹ️ Approval monitoring already active (cron job exists) — skipping CronCreate"` and proceed to STEP 4. Do NOT create a second job.
+   - **If not found:** Continue to step 2.
+
+2. **Create the cron job:**
+
+   ```
+   Use CronCreate with:
+     cron:      "0 */4 * * *"
+     durable:   true
+     recurring: true
+     prompt:    "Invoke the approval-monitor agent to check all AWAITING_APPROVAL tickets in the Tempest coverage pipeline for Jira approval/rejection comments."
+     reason:    "Polling Jira for test plan approval on pending tickets"
+   ```
+
+   Log: `"✅ Approval monitoring scheduled (checks every 4 hours, auto-expires in 7 days)"`
 
 **If in orchestrator mode:**
-- Include the fact that monitoring was scheduled in the JSON output (`"approval_monitoring_scheduled": true`)
+- Include the scheduling outcome in the JSON output:
+  - `"approval_monitoring_scheduled": true` — new job created
+  - `"approval_monitoring_scheduled": false` — job already existed, skipped
 
 **If CronCreate fails:**
 - Log a warning but do NOT fail the skill — the plan was posted successfully
 - Inform the user: "⚠️ Could not schedule automatic approval monitoring. Run `/orchestrator --status` periodically to check approval status manually."
 
 **Tool Usage:**
-- CronCreate
+- CronList (check for existing job)
+- CronCreate (only if no existing job found)
 
 **Output:**
-- Cron job created for approval monitoring
-- Or: warning that scheduling failed (plan posting still succeeded)
+- Existing job found → skip, log info
+- New job created → log confirmation
+- Creation failed → log warning (plan post still succeeded)
 
 ---
 
