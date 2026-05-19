@@ -39,7 +39,34 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
    - If `--retry` on a ticket in ERROR state: clear the error, re-enter the stage it failed at
    - If `--reset-to STAGE` on a ticket: force the ticket to that stage (for manual recovery)
 
-2. **Load pipeline state** from `~/.claude/orchestrator-state/pipeline-state.json`:
+2. **Acquire pipeline lock** (skip if `--status` or `--dry-run`):
+
+   ```bash
+   LOCK_FILE=~/.claude/orchestrator-state/.pipeline.lock
+   STALE_MINUTES=10
+
+   if [ -f "$LOCK_FILE" ]; then
+       locked_at=$(cat "$LOCK_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin)['locked_at'])")
+       age_minutes=$(( ( $(date +%s) - $(date -d "$locked_at" +%s 2>/dev/null || date -jf "%Y-%m-%dT%H:%M:%SZ" "$locked_at" +%s) ) / 60 ))
+       if [ "$age_minutes" -lt "$STALE_MINUTES" ]; then
+           locked_by=$(cat "$LOCK_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin)['locked_by'])")
+           echo "⚠️ Pipeline is locked by '$locked_by' (started ${age_minutes}m ago). Exiting to avoid state corruption."
+           echo "If this is stale, delete: $LOCK_FILE"
+           exit
+       fi
+       echo "ℹ️ Stale lock found (${age_minutes}m old) — overwriting"
+   fi
+
+   # Write lock
+   echo "{\"locked_by\": \"orchestrator\", \"locked_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$LOCK_FILE"
+   ```
+
+   **CRITICAL:** Always release the lock at the end of the run (STEP 4) or on any early exit:
+   ```bash
+   rm -f ~/.claude/orchestrator-state/.pipeline.lock
+   ```
+
+3. **Load pipeline state** from `~/.claude/orchestrator-state/pipeline-state.json`:
    ```bash
    cat ~/.claude/orchestrator-state/pipeline-state.json
    ```
@@ -800,7 +827,12 @@ After all tickets are processed:
 
 ---
 
-### STEP 4: Log Run
+### STEP 4: Log Run and Release Lock
+
+**Release pipeline lock first:**
+```bash
+rm -f ~/.claude/orchestrator-state/.pipeline.lock
+```
 
 Write a log entry for this run:
 
@@ -863,6 +895,36 @@ Log format per ticket:
 **For --status mode:** Show the summary table for ALL tracked tickets without processing.
 
 **For --dry-run mode:** Show what stages WOULD advance, but take no actions. Prefix each line with `[DRY-RUN]`.
+
+**ERROR handling in the summary:**
+
+For every ticket at stage `ERROR` or any terminal failure stage (`CODE_REVIEW_FAILED`, `VERIFICATION_FAILED`):
+
+1. **Highlight clearly in the summary table** — mark with `❌` prefix
+2. **Post a Jira comment** (if MCP available):
+   ```
+   Use mcp__mcp-atlassian__jira_add_comment:
+     issue_key: {ticket_id}
+     body: "❌ Automation pipeline error on {ticket_id}.
+            Stage failed: {error.stage_when_failed}
+            Error: {error.message}
+            
+            To retry: /orchestrator {ticket_id} --retry"
+   ```
+3. **Print a dedicated ERROR section** after the summary table:
+   ```
+   ⚠️  ACTION REQUIRED — {n} ticket(s) need attention:
+   ─────────────────────────────────────────────────────
+   ❌ OSPRH-22618  ERROR at ANALYZED: Jira ticket not found
+      → Fix: /orchestrator OSPRH-22618 --retry
+   
+   ❌ OSPRH-22619  CODE_REVIEW_FAILED: 3 violations after 1 retry
+      → Fix: Review violations manually, then:
+             /orchestrator OSPRH-22619 --reset-to IMPLEMENTING
+   ─────────────────────────────────────────────────────
+   ```
+
+If no errors: omit the ERROR section entirely.
 
 ---
 

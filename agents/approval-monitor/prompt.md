@@ -21,6 +21,27 @@ Check all tickets in `AWAITING_APPROVAL` stage for Jira comments containing appr
 
 ### STEP 1: Read Pipeline State
 
+**Check for pipeline lock before reading:**
+
+```bash
+LOCK_FILE=~/.claude/orchestrator-state/.pipeline.lock
+STALE_MINUTES=10
+
+if [ -f "$LOCK_FILE" ]; then
+    locked_at=$(cat "$LOCK_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin)['locked_at'])")
+    age_minutes=$(( ( $(date +%s) - $(date -d "$locked_at" +%s 2>/dev/null || date -jf "%Y-%m-%dT%H:%M:%SZ" "$locked_at" +%s) ) / 60 ))
+    if [ "$age_minutes" -lt "$STALE_MINUTES" ]; then
+        locked_by=$(cat "$LOCK_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin)['locked_by'])")
+        echo "ℹ️ Pipeline locked by '$locked_by' — skipping this approval check cycle. Will retry next cron tick."
+        exit
+    fi
+fi
+```
+
+If the lock is held by the orchestrator, exit silently — the orchestrator is currently writing to the state file. The cron will retry in 4 hours.
+
+**Read state file:**
+
 ```bash
 cat ~/.claude/orchestrator-state/pipeline-state.json
 ```

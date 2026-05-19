@@ -329,7 +329,7 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
      cron:      "0 */4 * * *"
      durable:   true
      recurring: true
-     prompt:    "Invoke the approval-monitor agent to check all AWAITING_APPROVAL tickets in the Tempest coverage pipeline for Jira approval/rejection comments."
+     prompt:    "REQUIRED ACTION: Use the Agent tool with subagent_type='approval-monitor' to run the approval-monitor agent. No other action is needed. The agent will read ~/.claude/orchestrator-state/pipeline-state.json, check Jira comments for all AWAITING_APPROVAL tickets, and update their stages to APPROVED, REJECTED, or TIMED_OUT."
      reason:    "Polling Jira for test plan approval on pending tickets"
    ```
 
