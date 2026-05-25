@@ -328,10 +328,10 @@ Alternative: React with 👍 to this comment (if your Jira supports reactions)
 
    ```
    Use CronCreate with:
-     cron:      "0 */4 * * *"
+     cron:      "17 */4 * * *"
      durable:   true
      recurring: true
-     prompt:    "REQUIRED ACTION: Use the Agent tool with subagent_type='approval-monitor' to run the approval-monitor agent. No other action is needed. The agent will read ~/.claude/orchestrator-state/pipeline-state.json, check Jira comments for all AWAITING_APPROVAL tickets, and update their stages to APPROVED, REJECTED, or TIMED_OUT."
+     prompt:    "Read ~/.claude/orchestrator-state/pipeline-state.json. Find all tickets with stage \"AWAITING_APPROVAL\". For each ticket: (1) If current time > approval_deadline, set stage to \"TIMED_OUT\" with timed_out_at timestamp. (2) Otherwise fetch Jira comments via jira_get_issue (comment_limit=50). Only consider comments posted AFTER plan_posted_at by non-automation authors (skip authors whose name contains \"Automation\"). (3) If any comment contains rejection keywords (\"rejected\", \"not approved\", \"decline\") — set stage to \"REJECTED\", record rejected_by (author displayName) and rejection_comment (first 200 chars). (4) Else if any comment contains approval keywords (\"Approved\", \"LGTM\", \"looks good\") — set stage to \"APPROVED\", record approved_by (author displayName) and approved_at. (5) Else if any human comment exists that matches neither keyword set — keep stage \"AWAITING_APPROVAL\" but set discussion_flagged: {comment_by, comment_at, comment_preview (first 150 chars)}. (6) Otherwise increment approval_checks and update last_check. Write the full updated state back to pipeline-state.json. Then print a visible summary: \"=== Approval Monitor ===\" followed by one line per ticket showing its outcome (APPROVED/REJECTED/TIMED_OUT/NEEDS DISCUSSION/still pending with check count and deadline)."
      reason:    "Polling Jira for test plan approval on pending tickets"
    ```
 

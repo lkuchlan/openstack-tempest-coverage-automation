@@ -133,7 +133,22 @@ If found:
 ```
 Continue to next ticket.
 
-#### 3f. No decision yet
+#### 3f. Check for discussion (neutral human comment)
+
+If no approval or rejection was found, check whether any qualifying comment was written by a human author (author display name does NOT contain "Automation" and is not a bot). If such a comment exists:
+
+- Keep stage as `AWAITING_APPROVAL` — still waiting for a decision
+- Set `discussion_flagged` on the ticket:
+  ```json
+  "discussion_flagged": {
+    "comment_by": "<comment.author.displayName>",
+    "comment_at": "<comment.created>",
+    "comment_preview": "<first 150 chars of comment body>"
+  }
+  ```
+- Mark ticket for `⚠️ NEEDS DISCUSSION` in the run summary
+
+#### 3g. No decision yet
 
 Increment `approval_checks` counter and update `last_check`:
 ```json
@@ -155,11 +170,20 @@ Use the **Write** tool to save the complete updated JSON back to:
 
 Always write the full state object — never partial updates.
 
-Log a summary of what changed this run:
-- `"APPROVED: TICKET-A, TICKET-B"`
-- `"REJECTED: TICKET-C"`
-- `"TIMED_OUT: TICKET-D"`
-- `"Still pending: TICKET-E (check #3, deadline: <date>)"`
+**Print a visible formatted summary** after writing — always, even if nothing changed:
+
+```
+=== Approval Monitor Run: <ISO-8601 now> ===
+✅ APPROVED:         TICKET-A (by <approved_by>)
+❌ REJECTED:         TICKET-B (by <rejected_by>) — "<rejection_comment first 80 chars>"
+⏰ TIMED_OUT:        TICKET-C (deadline was <approval_deadline>)
+⚠️ NEEDS DISCUSSION: TICKET-D (<comment_by> commented: "<comment_preview first 80 chars>")
+ℹ️ Still pending:    TICKET-E (check #<n>, deadline: <approval_deadline>)
+============================================
+```
+
+If no `AWAITING_APPROVAL` tickets were found: print `"ℹ️ Approval monitor: nothing to check."` and exit.
+If tickets were found but nothing changed: print `"ℹ️ Approval monitor: no changes (<N> ticket(s) still pending)."` with the still-pending lines.
 
 ---
 
@@ -204,6 +228,20 @@ Do NOT attempt to delete the cron job — let it auto-expire. If all tickets hav
   "timed_out_at": "<ISO-8601>",
   "approval_checks_performed": 8,
   "history": [{"stage": "TIMED_OUT", "at": "<ISO-8601>"}]
+}
+```
+
+### AWAITING_APPROVAL with discussion flagged
+```json
+{
+  "stage": "AWAITING_APPROVAL",
+  "approval_checks": 3,
+  "last_check": "<ISO-8601>",
+  "discussion_flagged": {
+    "comment_by": "Liron Kuchlani",
+    "comment_at": "<ISO-8601>",
+    "comment_preview": "Can you add negative tests for the error path?"
+  }
 }
 ```
 
