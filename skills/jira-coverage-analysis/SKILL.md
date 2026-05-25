@@ -77,11 +77,80 @@ This skill is for:
 
 3. **Fetch Ticket (if MCP available):**
    ```
-   Use jira_get_issue(issue_key="RHEL-12345")
-   Extract: summary, description, acceptance criteria, components
+   Use jira_get_issue(issue_key="RHEL-12345", fields="*all")
+   Extract: summary, description, acceptance criteria, components, parent, customfield_10014 (Epic Link)
    ```
 
-3. **Parse Requirements:**
+4. **Check for Sufficient Information:**
+
+   A ticket is considered **sufficient** if it provides ALL of:
+   - Identifiable OpenStack service (from components, labels, summary, or description)
+   - Feature or API that needs testing (not just generic "add tests" or "improve coverage")
+   - At least one of: description, acceptance criteria, or specific scenario
+
+   A ticket is **insufficient** if:
+   - Summary is generic (e.g., "Improve upstream coverage", "Add test automation")
+   - Description is empty or only contains boilerplate
+   - Cannot determine which service or feature to test
+
+5. **Walk Parent Ticket Hierarchy (if insufficient):**
+
+   When the fetched ticket lacks enough context, automatically traverse parent tickets:
+
+   **Traversal Algorithm:**
+   ```
+   current_ticket = initially fetched ticket
+   context_tickets = [current_ticket]
+   max_levels = 3  (don't traverse more than 3 levels up)
+   level = 0
+
+   while ticket is insufficient AND level < max_levels:
+       level += 1
+
+       # Find parent ticket key from:
+       #   - "parent" field (sub-task or Story under Epic in next-gen Jira)
+       #   - "customfield_10014" (Epic Link in classic Jira)
+       #   - "customfield_10008" (Epic Link alternate field)
+
+       parent_key = extract_parent_key(current_ticket)
+
+       if parent_key is None:
+           break  # No parent found, stop traversal
+
+       parent_ticket = jira_get_issue(parent_key, fields="*all")
+       context_tickets.append(parent_ticket)
+
+       if parent_ticket has sufficient information:
+           break  # Found what we need, stop traversal
+
+       current_ticket = parent_ticket  # Keep walking up
+   ```
+
+   **Extracting the parent key:**
+   ```python
+   # Check fields in order of priority:
+   # 1. parent.key  (next-gen Jira hierarchy)
+   parent_key = ticket["fields"].get("parent", {}).get("key")
+
+   # 2. customfield_10014  (classic Jira Epic Link)
+   if not parent_key:
+       parent_key = ticket["fields"].get("customfield_10014")
+
+   # 3. customfield_10008  (alternate Epic Link)
+   if not parent_key:
+       parent_key = ticket["fields"].get("customfield_10008")
+   ```
+
+   **Aggregating context from the hierarchy:**
+   - Merge service/component info from all tickets in the chain
+   - Merge descriptions, acceptance criteria, and labels
+   - Use the most specific (lowest-level) ticket's info when there are conflicts
+   - If requirements are spread across multiple levels, combine them
+
+   **Note in report:** When parent traversal was needed, mention which parent(s) provided context:
+   > _"Requirements derived from parent ticket OSPRH-XXXXX (Epic: "...")_"
+
+6. **Parse Requirements (from aggregated context):**
    - Extract service (Cinder, Manila, Glance, etc.)
    - Extract API/operation
    - Extract expected behavior
@@ -644,7 +713,8 @@ END OF ANALYSIS REPORT
 
 | Phase | Primary Tools | Purpose |
 |-------|---------------|---------|
-| Ticket Fetch | jira_get_issue, jira_search, Read | Get requirements |
+| Ticket Fetch | jira_get_issue (fields="*all") | Get requirements from ticket |
+| Parent Traversal | jira_get_issue (up to 3 levels up) | Walk hierarchy when ticket lacks context |
 | Repo Discovery | Bash (find) | Locate **BOTH** main Tempest and service plugin |
 | Coverage Discovery | Agent (Explore), Read, Bash | Find existing tests in **BOTH** repositories |
 | Remote State Check | Bash (git fetch, git ls-tree, git show) | Verify tests exist on origin/master in **BOTH** repos |
@@ -658,8 +728,9 @@ END OF ANALYSIS REPORT
 ## Success Criteria
 
 A successful analysis includes:
-1. ✅ Requirements clearly extracted
-2. ✅ **BOTH repositories searched** (main Tempest FIRST, then service plugin)
+1. ✅ Requirements clearly extracted (from ticket itself OR parent hierarchy if needed)
+2. ✅ Parent tickets traversed automatically when ticket lacks sufficient context (up to 3 levels)
+3. ✅ **BOTH repositories searched** (main Tempest FIRST, then service plugin)
 3. ✅ Existing coverage identified (MERGED tests only, from origin/master or origin/main in BOTH repos)
 4. ✅ Local/in-development tests completely ignored (not mentioned in report)
 5. ✅ Gaps clearly documented with priority
@@ -673,6 +744,9 @@ A successful analysis includes:
 ## Constraints & Rules
 
 ### ✅ DO:
+- **CRITICAL:** When ticket has no description or generic summary, walk the parent ticket hierarchy (up to 3 levels) before giving up or asking the user
+- **CRITICAL:** Use `fields="*all"` when fetching tickets to capture Epic Link and parent fields
+- **CRITICAL:** Note in the report which parent ticket(s) provided the context when traversal was needed
 - **CRITICAL:** Search **BOTH** main Tempest and service plugin repositories
 - **CRITICAL:** Search main Tempest **FIRST** (contains 70% of core tests)
 - **CRITICAL:** Check remote repository state (origin/master or origin/main) for **BOTH** repos
@@ -691,6 +765,8 @@ A successful analysis includes:
 - **CRITICAL:** Skip searching main Tempest repository (most tests live there!)
 - **CRITICAL:** Only search service plugin and miss core tests
 - **CRITICAL:** Report tests from local branches as "existing coverage"
+- **CRITICAL:** Ask the user for more information before attempting parent ticket traversal — always try the hierarchy first
+- **CRITICAL:** Stop at the first parent if it also lacks context — keep walking up (up to 3 levels)
 - Recommend excessive test coverage beyond ticket scope
 - Suggest tests for every edge case or minor variation
 - Include in-development tests in analysis report

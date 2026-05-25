@@ -158,7 +158,7 @@
         "comment_markers": [
           "🤖 Test Automation Plan",
           "Test Automation Plan",
-          "h2. 🤖 Test Automation Plan"
+          "## 🤖 Test Automation Plan"
         ],
         "comment_limit": 100,
         "on_duplicate_found": "ask_user",

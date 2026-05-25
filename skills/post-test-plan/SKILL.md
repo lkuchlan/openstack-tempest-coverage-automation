@@ -81,36 +81,38 @@ This skill takes a test coverage analysis (from `/jira-coverage-analysis`) and p
 - Avoid minor variations (e.g., "10 instances" vs "20 instances" can be one test with parameter)
 - Keep "What It Tests" column specific to the ticket requirement
 
-**Template Structure:**
+**Template Structure (Markdown — required by jira_add_comment):**
 ```
-h2. 🤖 Test Automation Plan
+## 🤖 Test Automation Plan
 
-*Feature:* {feature_description}
+**Feature:** {feature_description}
 
-h3. Proposed Tests
+**Context:** {parent_ticket_context_if_requirements_derived_from_parent}
 
-|| Test Method || What It Tests || Validates ||
-| {{test_name_1}} | {description} | {validation} |
-| {{test_name_2}} | {description} | {validation} |
-...
+### Proposed Tests
 
-h3. Existing Coverage (No Changes)
+| Test Method | What It Tests | Validates |
+|---|---|---|
+| `test_name_1` | {description} | {validation} |
+| `test_name_2` | {description} | {validation} |
+
+### Existing Coverage (No Changes)
 
 **CRITICAL:** Only include tests merged on origin/master or origin/main.
 DO NOT include in-development tests (local branches) - they mislead stakeholders.
 
-|| Test || Repository || Coverage || Status ||
-| {{existing_test_1}} | {plugin-name}/{path}/{file.py} (origin/master) | {coverage} | ✅ Covered |
-| {{existing_test_2}} | {plugin-name}/{path}/{file.py} (origin/main) | {coverage} | ✅ Covered |
-...
+| Test | Repository | Coverage | Status |
+|---|---|---|---|
+| `existing_test_1` | {plugin-name}/{path}/{file.py} (origin/master) | {coverage} | ✅ Covered |
+| `existing_test_2` | {plugin-name}/{path}/{file.py} (origin/main) | {coverage} | ✅ Covered |
 
-h3. ✅ Approval Required
+### ✅ Approval Required
 
-*Action:* Comment *"Approved"* below to implement these tests
+**Action:** Comment **"Approved"** below to implement these tests
 
-_Alternative: React with 👍 to this comment (if your Jira supports reactions)_
+Alternative: React with 👍 to this comment (if your Jira supports reactions)
 
-*Implementation:* {file_location}
+**Implementation:** `{file_location}`
 ```
 
 **Repository Column Format:**
@@ -248,8 +250,8 @@ _Alternative: React with 👍 to this comment (if your Jira supports reactions)_
      Modify formatted plan (from STEP 2):
      Add prefix to header:
      
-     OLD: "h2. 🤖 Test Automation Plan"
-     NEW: "h2. 🤖 [UPDATED] Test Automation Plan"
+     OLD: "## 🤖 Test Automation Plan"
+     NEW: "## 🤖 [UPDATED] Test Automation Plan"
      
      Add timestamp line after header:
      "_Updated: {current_date} (replacing plan from {original_date})_"
