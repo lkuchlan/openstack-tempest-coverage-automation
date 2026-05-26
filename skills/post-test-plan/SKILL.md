@@ -62,7 +62,11 @@ This skill takes a test coverage analysis (from `/jira-coverage-analysis`) and p
 ### STEP 2: Format as Jira Markdown
 
 **Actions:**
-1. Read template: `templates/jira_plan_format1.md`
+1. **Select template:**
+   - Default: `templates/jira_plan_format1.md` (full plan — for first-time posts)
+   - Revised: `templates/jira_plan_format_revised.md` (delta-only — for reposts after discussion feedback)
+   - The revised template is selected automatically in STEP 2.5 when `discussion_flagged` is present in pipeline state and user chooses repost
+
 2. Extract from analysis:
    - Feature description
    - Test methods list (name, what it tests, validates)
@@ -247,16 +251,39 @@ Alternative: React with 👍 to this comment (if your Jira supports reactions)
    
    - **"repost"** or **"r"** or **"yes"**:
      ```
-     Modify formatted plan (from STEP 2):
-     Add prefix to header:
+     Check pipeline state for discussion_flagged on this ticket:
+       cat ~/.claude/orchestrator-state/pipeline-state.json
+       → tickets[ticket_id].discussion_flagged
      
-     OLD: "## 🤖 Test Automation Plan"
-     NEW: "## 🤖 [UPDATED] Test Automation Plan"
+     IF discussion_flagged EXISTS (repost is after stakeholder feedback):
+       Use template: templates/jira_plan_format_revised.md
+       
+       Ask user:
+         "Which tests should be in the revised plan?
+          (List test method names, one per line. Press Enter twice when done.)"
+       
+       Ask user:
+         "Which tests from the original plan are dropped, and why?
+          (e.g., 'test_glance_cinder_same_pool_upload_verification — covered by existing test_volume_upload')"
+       
+       Populate revised template:
+         {{REVIEWER_NAME}}              → discussion_flagged.comment_by
+         {{FEEDBACK_DATE}}              → discussion_flagged.comment_at (date only)
+         {{REVISED_TESTS_TABLE_ROWS}}   → user-provided revised tests
+         {{DROPPED_TESTS_WITH_REASONS}} → user-provided dropped tests
+         {{IMPLEMENTATION_LOCATION}}    → from analysis
+         {{DATE}}                       → current date
+       
+       Proceed to STEP 3 (post the revised plan)
      
-     Add timestamp line after header:
-     "_Updated: {current_date} (replacing plan from {original_date})_"
-     
-     Proceed to STEP 3 (post the updated plan)
+     ELSE (repost is not after discussion — use full template with [UPDATED] prefix):
+       Modify formatted plan (from STEP 2):
+       Add prefix to header:
+         OLD: "## 🤖 Test Automation Plan"
+         NEW: "## 🤖 [UPDATED] Test Automation Plan"
+       Add timestamp line after header:
+         "Updated: {current_date} (replacing plan from {original_date})"
+       Proceed to STEP 3 (post the updated plan)
      ```
 
 5. **If NO duplicate found:**

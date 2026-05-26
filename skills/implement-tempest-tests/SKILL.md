@@ -324,6 +324,8 @@ grep -r "addCleanup" {repo}/tests/
 - **Identify base classes per service** from existing tests
 - **Use exact same client patterns** as existing tests
 - **Copy cleanup patterns exactly**
+- **Search for an existing test file before creating a new one** - look for files that cover the same service area or API. Only create a new file if no suitable existing file is found.
+- **Search for an existing test class before creating a new one** - within the chosen file, check if an existing class covers the same feature area. Add the test method there rather than creating a new class. A new class is only warranted when the base class, credential type, or skip conditions differ meaningfully from all existing classes.
 
 **Tool Usage:**
 - **Agent (Explore, thorough)** - Deep pattern discovery
@@ -353,7 +355,8 @@ grep -r "addCleanup" {repo}/tests/
 - Use discovered patterns
 
 **Planning Considerations:**
-- File location (new file or add to existing)
+- File location — **prefer adding to an existing file** over creating a new one. Search for existing test files that cover the same service area or API (e.g., `test_create_from_image.py` for image-based volume tests). Only create a new file when the new test is clearly a different subject area.
+- Class location — within the chosen file, **prefer adding to an existing class** over creating a new one. Only create a new class when the required base class, credential type, or skip conditions genuinely differ from all existing classes in the file.
 - Class structure
 - Method names
 - Test types (positive, negative, RBAC)
