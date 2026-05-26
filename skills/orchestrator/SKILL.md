@@ -544,12 +544,12 @@ No further action. Continue to next ticket.
    }
    ```
 2. **Update Jira** (if MCP available):
-   - Post a comment with verification results:
+   - Post a comment using the `verified_jira_comment` template from `config.json`:
      ```
      Use mcp__mcp-atlassian__add_comment
-     Body: "✅ Tests verified on DevStack. {pass_count}/{total_count} tests passing.
-     Branch: {branch_name}
-     Ready for Gerrit submission: git review"
+     Body: config.verification.verified_jira_comment
+           Substitute: {pass_count}, {total_count}, {devstack_host}, {backend_info}
+           {test_results_table} = Markdown table with columns: Test | Status | Duration
      ```
    - Add label: `automation-verified`
 3. **Checkpoint:** Write state to disk immediately

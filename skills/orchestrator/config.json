@@ -51,7 +51,7 @@
     "update_jira_on_failed": true,
     "verified_labels": ["automation-verified", "ready-to-push"],
     "failed_labels": ["automation-verification-failed"],
-    "verified_jira_comment": "Tests verified on DevStack. {pass_count}/{total_count} tests passing. Commit is ready to push.",
+    "verified_jira_comment": "✅ Tests verified on DevStack.\n\n**Result:** {pass_count}/{total_count} tests passing\n\n{test_results_table}\n\n**Environment:** {devstack_host} ({backend_info})\n\nCommit is ready for submission.",
     "failed_jira_comment": "Verification failed after {retry_count} retry(s). Failed tests: {failed_test_list}. Manual investigation required.",
     "deployment_failed_jira_comment": "DevStack deployment failed. This is an infrastructure issue, not a test code issue. Error: {deployment_error}. Check VM resources, network, and OS compatibility.",
     "skipped_jira_comment": "Automated verification skipped — DevStack cannot provide the required environment. Reason: {skip_reason}. Manual verification on a real deployment is needed.",
