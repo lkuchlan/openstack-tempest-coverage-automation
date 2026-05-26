@@ -38,6 +38,7 @@
     "VERIFYING": "Tests being verified against DevStack",
     "FIX_IN_PROGRESS": "Re-implementing tests after code review or verification failure",
     "VERIFIED": "Tests passed on real DevStack environment",
+    "SUBMITTED": "Patch submitted for upstream review on Gerrit",
     "CODE_REVIEW_FAILED": "Code review failed after retry cycle exhausted",
     "VERIFICATION_FAILED": "Tests failed after retry cycle exhausted",
     "VERIFICATION_SKIPPED": "Tests cannot be verified on DevStack (requires specific backend/hardware/multi-node)",
@@ -55,7 +56,8 @@
     "failed_jira_comment": "Verification failed after {retry_count} retry(s). Failed tests: {failed_test_list}. Manual investigation required.",
     "deployment_failed_jira_comment": "DevStack deployment failed. This is an infrastructure issue, not a test code issue. Error: {deployment_error}. Check VM resources, network, and OS compatibility.",
     "skipped_jira_comment": "Automated verification skipped — DevStack cannot provide the required environment. Reason: {skip_reason}. Manual verification on a real deployment is needed.",
-    "skipped_labels": ["automation-manual-verification-needed"]
+    "skipped_labels": ["automation-manual-verification-needed"],
+    "submitted_jira_comment": "Patch submitted for upstream review."
   },
   "max_tickets_per_run": 5,
   "dry_run": false

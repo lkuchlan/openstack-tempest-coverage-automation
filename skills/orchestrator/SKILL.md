@@ -21,6 +21,7 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
 /tempest-coverage-orchestrator TICKET-ID --retry      # Retry from current stage
 /tempest-coverage-orchestrator TICKET-ID --reset-to ANALYZED  # Force stage
 /tempest-coverage-orchestrator --dry-run --jql "..."  # Preview without acting
+/tempest-coverage-orchestrator TICKET-ID --submitted <gerrit_url>  # Mark as submitted after git review
 ```
 
 ---
@@ -38,6 +39,7 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
    - If `--dry-run`: set dry_run mode (report what would happen, take no actions)
    - If `--retry` on a ticket in ERROR state: clear the error, re-enter the stage it failed at
    - If `--reset-to STAGE` on a ticket: force the ticket to that stage (for manual recovery)
+   - If `--submitted <gerrit_url>`: run the VERIFIED → SUBMITTED handler for that ticket (skip all other stages)
 
 2. **Acquire pipeline lock** (skip if `--status` or `--dry-run`):
 
@@ -788,7 +790,43 @@ No further action. Continue to next ticket.
 
 ---
 
-#### Terminal Stages: VERIFIED / CODE_REVIEW_FAILED / VERIFICATION_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
+#### Stage Handler: VERIFIED → SUBMITTED (triggered by --submitted <gerrit_url>)
+
+**Condition:** `--submitted <gerrit_url>` flag is passed, ticket exists in state (any stage is accepted — user may call this immediately after `git review` without waiting for the next orchestrator run).
+
+**Actions:**
+1. Update Jira issue:
+   - Set `customfield_10530` (Gerrit Link field) to `<gerrit_url>`:
+     ```
+     Use mcp__mcp-atlassian__jira_update_issue
+     fields: {"customfield_10530": "<gerrit_url>"}
+     ```
+   - Post comment using `config.verification.submitted_jira_comment`:
+     ```
+     Use mcp__mcp-atlassian__jira_add_comment
+     Body: config.verification.submitted_jira_comment
+     ```
+2. Update ticket state:
+   ```json
+   {
+     "stage": "SUBMITTED",
+     "entered_stage_at": "<current ISO-8601 timestamp>",
+     "submitted_at": "<current ISO-8601 timestamp>",
+     "gerrit_url": "<gerrit_url>",
+     "history": [..., {"stage": "SUBMITTED", "at": "<timestamp>"}]
+   }
+   ```
+3. **Checkpoint:** Write state to disk immediately
+4. Print confirmation:
+   ```
+   ✅ TICKET-ID marked as SUBMITTED
+      Gerrit Link field updated: <gerrit_url>
+      Jira comment posted.
+   ```
+
+---
+
+#### Terminal Stages: VERIFIED / SUBMITTED / CODE_REVIEW_FAILED / VERIFICATION_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
 
 **Condition:** Ticket is at any terminal stage
 
