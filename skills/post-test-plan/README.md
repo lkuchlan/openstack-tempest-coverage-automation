@@ -209,6 +209,19 @@ or
 Stakeholder reacts to test plan comment with 👍
 ```
 
+### Handling Stakeholder Discussion
+
+When a stakeholder leaves a comment that is neither an approval nor a rejection (a question, concern, or feedback requesting changes), the `approval-monitor` agent sets `discussion_flagged = true` on the ticket state and prints a **NEEDS DISCUSSION** summary at its next run.
+
+**What happens:**
+- Ticket stays at `AWAITING_APPROVAL` — not rejected, not approved
+- User is notified to address the feedback
+- Re-running `/post-test-plan TICKET-ID` automatically uses the **revised template** (`jira_plan_format_revised.md`), which includes a "Changes Made" section and a list of dropped tests
+
+**Revised template is used when:**
+- Pipeline state has `discussion_flagged: true` for the ticket
+- User re-runs `/post-test-plan TICKET-ID` after addressing feedback
+
 ### Checking for Approval
 
 *Future enhancement for `/implement-tempest-tests`:*

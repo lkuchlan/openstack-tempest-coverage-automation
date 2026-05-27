@@ -82,9 +82,9 @@ Agents run with isolated context and restricted tool access. They are invoked pr
 
 **approval-monitor:**
 - Tools: Bash, Read, MCP Jira (read/write state only — cannot touch code)
-- Purpose: Poll Jira for approval/rejection on pending test plans
+- Purpose: Poll Jira for approval/rejection/discussion on pending test plans
 - Invoked by: Durable CronCreate job (every 4 hours), created automatically by post-test-plan
-- Output: Updated pipeline state file (APPROVED / REJECTED / TIMED_OUT)
+- Output: Updated pipeline state file (APPROVED / REJECTED / TIMED_OUT / discussion_flagged)
 - Auto-expires: After 7 days (matches approval timeout window)
 
 ### Shared Configuration
@@ -195,6 +195,7 @@ Implementation Output (test files on branch)
 [Measure coverage delta]
     ↓
     +──── PASSED → VERIFIED (update Jira) → git review (manual)
+    |              → /orchestrator TICKET --submitted <url> → SUBMITTED
     |
     +──── FAILED → Structured feedback
                         ↓
@@ -252,9 +253,14 @@ post-test-plan posts plan to Jira
               │     ├── Check deadline → TIMED_OUT?
               │     ├── Fetch Jira comments via MCP
               │     ├── rejection keywords → REJECTED
-              │     └── approval keywords  → APPROVED
+              │     ├── approval keywords  → APPROVED
+              │     └── neutral human comment → discussion_flagged = true (notify user, stays AWAITING_APPROVAL)
               │
               └── Write updated state back to pipeline-state.json
+
+orchestrator / user sees "NEEDS DISCUSSION" summary
+    └── User addresses feedback
+    └── /post-test-plan TICKET-ID  (uses revised template automatically)
 
 orchestrator (next run)
     └── Sees APPROVED tickets → invokes implement-tempest-tests

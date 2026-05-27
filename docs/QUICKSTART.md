@@ -78,6 +78,9 @@ tox -e pep8,py3
 # Push for review
 git push origin tempest-coverage-OSPRH-22613
 git review  # If using Gerrit
+
+# After git review — mark ticket as submitted in Jira
+> /orchestrator OSPRH-22613 --submitted <gerrit_url>
 ```
 
 ## Optional: Jira MCP Setup

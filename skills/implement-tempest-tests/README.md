@@ -22,6 +22,7 @@ Use this skill for:
 - **Validated:** Automatic tox pep8 + py3
 - **Git workflow:** Branch + commit (no auto-push)
 - **Mandatory recap:** Precise final summary with exact paths
+- **Smart file/class selection:** Searches for an existing test file in the same subject area before creating a new one; adds to an existing test class rather than creating a new one unless base class, credentials, or skip conditions differ
 
 ## Quick Start
 

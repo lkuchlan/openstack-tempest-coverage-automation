@@ -21,12 +21,14 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 /post-test-plan OSPRH-22613           # Post plan for approval
 /implement-tempest-tests OSPRH-22613  # Implement after approval
 /verify-tempest-devstack OSPRH-22613  # Verify on real OpenStack
+# After running git review manually:
+/orchestrator OSPRH-22613 --submitted <gerrit_url>  # Update Jira with Gerrit link
 ```
 
 **Automated workflow (batch):**
 ```bash
 /orchestrator --jql "project = OSPRH AND component = Cinder AND labels = needs-tempest-coverage"
-# Discovers tickets → analyzes → posts plans → monitors approval → implements → verifies
+# Discovers tickets → analyzes → posts plans → monitors approval → implements → verifies → (manual: --submitted)
 ```
 
 ---
@@ -166,10 +168,10 @@ USER
 - **Checks:** 7 rules — base class, clients, waiters, cleanup, decorators, independence, naming
 
 **`approval-monitor`** - Background Approval Polling (Scheduled)
-- **Purpose:** Poll Jira for approval/rejection comments on posted test plans
+- **Purpose:** Poll Jira for approval/rejection/discussion comments on posted test plans
 - **Speed:** Runs every 4 hours automatically via durable cron
 - **Invoked by:** Scheduled automatically when `post-test-plan` posts a plan
-- **Updates:** Pipeline state file with APPROVED / REJECTED / TIMED_OUT decisions
+- **Updates:** Pipeline state file with APPROVED / REJECTED / TIMED_OUT / NEEDS_DISCUSSION decisions
 
 ### Shared Configuration
 
@@ -359,6 +361,9 @@ git diff HEAD~1  # Review changes
 tox -e pep8,py3  # Additional validation
 git push origin tempest-coverage-OSPRH-22613
 git review  # If using Gerrit
+
+# Step 4: Mark as submitted in Jira (after git review)
+> /orchestrator OSPRH-22613 --submitted <gerrit_url>
 ```
 
 ### Workflow 2: Batch Analysis for Sprint Planning

@@ -107,6 +107,12 @@ tox -e pep8,py3  # Additional validation
 # Step 6: Push to remote for review
 git push origin tempest-coverage-OSPRH-22613
 git review  # If using Gerrit for upstream
+
+# Step 7: Mark ticket as submitted in Jira (after git review)
+/orchestrator OSPRH-22613 --submitted <gerrit_url>
+# ✅ Sets Gerrit Link field in Jira
+# ✅ Posts submission comment to ticket
+# ✅ Advances pipeline state to SUBMITTED
 ```
 
 **When to use:**
@@ -262,6 +268,36 @@ git push origin tempest-coverage-OSPRH-22613
 - Need time to review analysis before posting
 - Want team discussion before stakeholder approval
 - Updating existing plans with new information
+
+---
+
+### Workflow 6: Handling Stakeholder Discussion
+
+**When a stakeholder leaves a comment that is neither approval nor rejection**
+
+```bash
+# After /post-test-plan posts the plan, approval-monitor runs every 4 hours
+# If a stakeholder leaves a question or feedback comment:
+
+# Approval monitor detects a neutral human comment
+# → Sets discussion_flagged = true on the ticket state
+# → Prints "NEEDS DISCUSSION" summary at next monitor run
+# → Ticket stays at AWAITING_APPROVAL (not rejected, not approved)
+
+# User is notified — address the stakeholder's feedback
+
+# Re-post updated plan (revised template used automatically)
+/post-test-plan OSPRH-22613
+# ✅ Detects discussion_flagged in pipeline state
+# ✅ Uses revised template (includes "Changes Made" section)
+# ✅ Lists dropped tests (if any)
+# ✅ Posts updated plan to Jira
+```
+
+**When to use:**
+- Stakeholder asks a clarifying question on the test plan
+- Stakeholder requests changes before approving
+- Team discussion needed before proceeding
 
 ---
 
