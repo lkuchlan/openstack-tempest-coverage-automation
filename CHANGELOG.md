@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Orchestrator `--submitted` flag** — After running `git review`, users can now run
+  `/orchestrator TICKET-ID --submitted <gerrit_url>` to set the Gerrit Link field on the Jira
+  issue, post a submission comment, and advance the ticket to the new SUBMITTED terminal stage.
+- **Approval monitor: discussion detection** — Neutral stakeholder comments (neither approval
+  nor rejection) now set `discussion_flagged` on the ticket state. The approval monitor prints a
+  NEEDS DISCUSSION summary and the ticket stays at AWAITING_APPROVAL without blocking the flow.
+- **Post-test-plan: revised template on repost** — When `discussion_flagged` is set and the user
+  re-runs `/post-test-plan`, the skill automatically uses a revised template
+  (`jira_plan_format_revised.md`) that includes a "Changes Made" section and lists dropped tests.
+- **Implement-tempest-tests: prefer existing files/classes** — The skill now searches for an
+  existing test file in the same subject area before creating a new one, and adds to an existing
+  test class rather than creating a new class unless base class, credentials, or skip conditions
+  differ.
+
 ### Planned
 - Add support for additional OpenStack services (Neutron, Heat, Barbican)
 - Enhanced error recovery for MCP connection failures

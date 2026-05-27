@@ -52,7 +52,12 @@ Pipeline orchestrator that ties all skills into an automated workflow. Manages t
 /tempest-coverage-orchestrator --jql "..."           # Discover via JQL
 /tempest-coverage-orchestrator --status              # Show all tracked tickets
 /tempest-coverage-orchestrator --dry-run --jql "..."  # Preview without acting
+/tempest-coverage-orchestrator TICKET-ID --submitted <gerrit_url>  # Mark as submitted after git review
 ```
+
+**Pipeline terminal stages:** SUBMITTED (after `--submitted`), REJECTED, TIMED_OUT, CODE_REVIEW_FAILED, VERIFICATION_FAILED
+
+**discussion_flagged:** When the approval-monitor detects a neutral stakeholder comment (neither approval nor rejection), the ticket stays at AWAITING_APPROVAL and is flagged as NEEDS DISCUSSION. Re-running `/post-test-plan` after addressing feedback uses the revised template automatically.
 
 ### /jira-coverage-analysis
 
@@ -80,7 +85,7 @@ Implement Tempest tests from requirements with automatic validation. Creates bra
 
 **Use for:** Post-approval implementation • RBAC/negative/scenario tests • Jira ticket implementation
 
-**Key features:** Pattern discovery • Strict standards enforcement • Tox validation • Git workflow automation
+**Key features:** Pattern discovery • Strict standards enforcement • Tox validation • Git workflow automation • Prefers existing test files and classes over creating new ones
 
 → [Full documentation](skills/implement-tempest-tests/README.md)
 

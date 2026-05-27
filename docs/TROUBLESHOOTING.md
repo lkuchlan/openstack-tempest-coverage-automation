@@ -458,6 +458,27 @@ cat ~/.claude/settings.json | grep -A10 mcpServers
 
 ---
 
+### Approval Monitor Shows "NEEDS DISCUSSION"
+
+**Symptom:** The approval-monitor agent prints a `⚠️ NEEDS DISCUSSION` summary instead of APPROVED / REJECTED / TIMED_OUT.
+
+**Cause:** A stakeholder left a comment on the test plan that was neither an approval keyword ("Approved", "LGTM") nor a rejection keyword ("Rejected", "NAK"). This could be a question, a concern, or a request for changes.
+
+**What to do:**
+
+1. **Read the stakeholder's comment** in Jira to understand the feedback
+2. **Address the feedback** — update the test plan or discuss in the ticket
+3. **Re-post the revised plan** — the skill picks up `discussion_flagged` automatically:
+   ```bash
+   /post-test-plan TICKET-ID
+   # Uses the revised template (includes "Changes Made" section)
+   ```
+4. **Approval monitoring continues** — the durable cron keeps running; once the stakeholder comments "Approved", the ticket advances normally
+
+**Note:** The ticket is NOT rejected — it stays at AWAITING_APPROVAL. No action is needed beyond addressing the feedback and re-posting.
+
+---
+
 ### Tox Validation Fails
 
 **Symptom:** `tox -e pep8,py3` reports errors after implementation
