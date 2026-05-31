@@ -326,6 +326,8 @@ grep -r "addCleanup" {repo}/tests/
 - **Copy cleanup patterns exactly**
 - **Search for an existing test file before creating a new one** - look for files that cover the same service area or API. Only create a new file if no suitable existing file is found.
 - **Search for an existing test class before creating a new one** - within the chosen file, check if an existing class covers the same feature area. Add the test method there rather than creating a new class. A new class is only warranted when the base class, credential type, or skip conditions differ meaningfully from all existing classes.
+- **File-name purpose-qualifier check** — If the candidate file has a purpose-qualifier suffix, only place the new test there if it genuinely belongs to that category: `_concurrency` files contain tests that run parallel operations (e.g., `run_concurrent_tasks()`); `_rbac` files contain role-based access control tests; `_admin` files require admin credentials; `_negative` files test error paths. If the new test does not fit the qualifier, find or create a different file.
+- **Utility-usage consistency check** — If every existing test in the candidate file uses a specific shared utility (e.g., `run_concurrent_tasks()`) and the new test does not, treat that as a mismatch signal even when subject areas overlap. Prefer a different file or create a new one.
 
 **Tool Usage:**
 - **Agent (Explore, thorough)** - Deep pattern discovery
@@ -356,7 +358,9 @@ grep -r "addCleanup" {repo}/tests/
 
 **Planning Considerations:**
 - File location — **prefer adding to an existing file** over creating a new one. Search for existing test files that cover the same service area or API (e.g., `test_create_from_image.py` for image-based volume tests). Only create a new file when the new test is clearly a different subject area.
+- File purpose-qualifier — Apply the checks from STEP 3: if the candidate file has a purpose-qualifier suffix (`_concurrency`, `_rbac`, `_admin`, `_negative`) or every existing test uses a shared utility the new test doesn't, reject that file and look for a better match.
 - Class location — within the chosen file, **prefer adding to an existing class** over creating a new one. Only create a new class when the required base class, credential type, or skip conditions genuinely differ from all existing classes in the file.
+- Skip-condition mismatch — Before choosing a class, verify its `skip_checks` guard does not incorrectly gate the new test. If the candidate class guards on a condition unrelated to the new test's requirements (e.g., `if not CONF.volume_feature_enabled.concurrency_tests` for a non-concurrency test), that class is the wrong home. Use a class without that guard, or create a new class or file.
 - Class structure
 - Method names
 - Test types (positive, negative, RBAC)

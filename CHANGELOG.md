@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   existing test file in the same subject area before creating a new one, and adds to an existing
   test class rather than creating a new class unless base class, credentials, or skip conditions
   differ.
+- **Implement-tempest-tests: file-purpose matching guards** — Three new guards prevent placing
+  tests in semantically wrong files: (1) purpose-qualifier suffix check (`_concurrency`, `_rbac`,
+  `_admin`, `_negative` files only accept matching test types); (2) utility-usage consistency
+  check (if all existing tests use a shared utility the new test doesn't, the file is a mismatch);
+  (3) skip-condition mismatch check (don't reuse a class whose `skip_checks` guard would
+  incorrectly gate the new test).
 
 ### Planned
 - Add support for additional OpenStack services (Neutron, Heat, Barbican)

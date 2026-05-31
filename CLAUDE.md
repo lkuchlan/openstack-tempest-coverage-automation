@@ -85,7 +85,7 @@ Implement Tempest tests from requirements with automatic validation. Creates bra
 
 **Use for:** Post-approval implementation • RBAC/negative/scenario tests • Jira ticket implementation
 
-**Key features:** Pattern discovery • Strict standards enforcement • Tox validation • Git workflow automation • Prefers existing test files and classes over creating new ones
+**Key features:** Pattern discovery • Strict standards enforcement • Tox validation • Git workflow automation • Prefers existing test files and classes over creating new ones • File-purpose matching guards (rejects files whose purpose-qualifier or shared utility doesn't match the new test)
 
 → [Full documentation](skills/implement-tempest-tests/README.md)
 
