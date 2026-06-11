@@ -1,0 +1,11 @@
+[Unit]
+Description=Tempest Coverage AI Pipeline
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash --login %h/openstack-tempest-coverage-automation/scripts/run-pipeline.sh
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=7200

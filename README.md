@@ -25,10 +25,15 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 /orchestrator OSPRH-22613 --submitted <gerrit_url>  # Update Jira with Gerrit link
 ```
 
-**Automated workflow (batch):**
+**Automated workflow (batch) — runs every 4 hours via systemd:**
 ```bash
-/orchestrator --jql "project = OSPRH AND component = Cinder AND labels = needs-tempest-coverage"
-# Discovers tickets → analyzes → posts plans → monitors approval → implements → verifies → (manual: --submitted)
+# On the VM, the systemd timer runs run-pipeline.sh every 4 hours automatically.
+# It discovers tickets via JQL, advances each through stages, and posts plans to Jira.
+# The only human step is commenting "Approved" on the Jira ticket.
+
+# Manual operations (recovery, status, submission):
+/orchestrator OSPRH-22613 --status               # Check pipeline state
+/orchestrator OSPRH-22613 --submitted <gerrit_url>  # Update Jira after git review
 ```
 
 ---
@@ -100,29 +105,29 @@ claude
 The system is built from **5 skills** (user-invocable slash commands) and **2 agents** (specialized background workers), connected through a shared state file.
 
 ```
-USER
- │  /jira-coverage-analysis  /post-test-plan
- │  /implement-tempest-tests  /verify-tempest-devstack  /orchestrator
- ▼
-┌──────────────────────────────────────────────────┐
-│  Skills  (orchestrator invokes these in sequence) │
-│                                                  │
-│  jira-coverage-analysis  →  analyze gaps         │
-│  post-test-plan          →  post to Jira         │
-│                             + schedules ──────►  CronCreate (4h)
-│  implement-tempest-tests →  write tests               │ fires
-│  verify-tempest-devstack →  run on DevStack           ▼
-└──────────────┬───────────────────────────────┐  approval-monitor
-               │ spawns                         │  AGENT
-               ▼                                │  polls Jira
-        code-reviewer AGENT                     │  APPROVED / REJECTED
-        7 Tempest rule checks                   │  / TIMED_OUT
-        ~10s before DevStack                    └──────────────────────
-└─────────────────────────────────────────────────────┘
-               │
-               ▼
-       Shared State: pipeline-state.json
-       Shared Config: config.json
+systemd timer (every 4h)           USER (manual operations)
+         │                                  │
+         ▼                                  │
+  run-pipeline.sh                  /jira-coverage-analysis
+  (bash stage router)              /post-test-plan
+         │                         /implement-tempest-tests
+         ├─ calls per stage:       /verify-tempest-devstack
+         │   /jira-coverage-analysis         /orchestrator --status
+         │   /post-test-plan                 /orchestrator --submitted
+         │   /orchestrator (approval check)
+         │   /implement-tempest-tests
+         │
+         │  post-test-plan schedules ──────► CronCreate (4h)
+         │                                        │ fires
+         │                                        ▼
+         │                               approval-monitor AGENT
+         │  orchestrator spawns ───────► polls Jira → APPROVED/REJECTED
+         │
+         │  implement-tempest-tests spawns ─► code-reviewer AGENT
+         │                                     7 Tempest rule checks
+         ▼
+  Shared State: pipeline-state.json
+  Shared Config: config.json
 ```
 
 > See [`docs/architecture.svg`](docs/architecture.svg) and [`docs/pipeline-flow.svg`](docs/pipeline-flow.svg) for full visual diagrams.
@@ -153,11 +158,12 @@ USER
 - **Output:** Verification report with pass/fail results
 - **Use for:** Validating tests against real OpenStack APIs before pushing
 
-**5. `/orchestrator`** - Full Pipeline Automation
-- **Purpose:** Automate the entire pipeline end-to-end
-- **Speed:** Hours to days (background approval monitoring + verification)
-- **Output:** State-tracked pipeline with Jira updates
-- **Use for:** Batch ticket processing, automated workflow
+**5. `/orchestrator`** - Approval Monitoring & Manual Recovery
+- **Purpose:** Check approval status on AWAITING_APPROVAL tickets; manual stage recovery
+- **Speed:** Seconds (read-only Jira comment check)
+- **Output:** Approval decision + updated pipeline state
+- **Use for:** `--status` checks, `--retry`, `--reset-to STAGE`, `--submitted` after git review
+- **Note:** In automated runs, `run-pipeline.sh` drives the pipeline and calls this skill only for approval checking
 
 ### Two Agents
 
@@ -477,13 +483,13 @@ The system uses two types of components: **skills** (user-invocable slash comman
 
 Skills are invoked directly by users with `/skill-name`. They run in the main conversation context and produce human-readable markdown output by default.
 
-| Skill | User invocation | Orchestrator invocation |
+| Skill | User invocation | Automated invocation (run-pipeline.sh) |
 |---|---|---|
-| `jira-coverage-analysis` | `/jira-coverage-analysis TICKET` → markdown | `--orchestrator-mode` → JSON |
-| `post-test-plan` | `/post-test-plan TICKET` → markdown | `--orchestrator-mode` → JSON |
-| `implement-tempest-tests` | `/implement-tempest-tests TICKET` → markdown | `--orchestrator-mode` → JSON |
-| `verify-tempest-devstack` | `/verify-tempest-devstack TICKET` → markdown | `--orchestrator-mode` → JSON |
-| `orchestrator` | `/orchestrator --jql "..."` → summary table | — |
+| `jira-coverage-analysis` | `/jira-coverage-analysis TICKET` → markdown | `claude -p /jira-coverage-analysis TICKET` |
+| `post-test-plan` | `/post-test-plan TICKET` → markdown | `claude -p /post-test-plan TICKET` |
+| `implement-tempest-tests` | `/implement-tempest-tests TICKET` → markdown | `claude -p /implement-tempest-tests TICKET` |
+| `verify-tempest-devstack` | `/verify-tempest-devstack TICKET` → markdown | `claude -p /verify-tempest-devstack TICKET` |
+| `orchestrator` | `/orchestrator TICKET --status` → summary | `claude -p /orchestrator TICKET` (approval check only) |
 
 ### Agents (Specialized Workers)
 

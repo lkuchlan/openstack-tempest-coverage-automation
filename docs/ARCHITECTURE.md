@@ -42,11 +42,45 @@ Overview of the OpenStack Tempest Coverage Automation system design.
     └──────────────────────────────────────────────────────────┘
 ```
 
+## Pipeline Runtime (Automated)
+
+In production the pipeline runs on a VM via a systemd timer every 4 hours. `scripts/run-pipeline.sh` is the pipeline driver — **not** the orchestrator skill:
+
+```
+systemd timer (every 4h)
+    ↓
+run-pipeline.sh  ← bash-level stage router
+    │
+    ├─ Stage 1: Discovery
+    │    claude -p "query Jira" → ticket IDs → jq adds DISCOVERED entries to state
+    │
+    ├─ Stage 2: DISCOVERED → ANALYZED
+    │    claude -p /jira-coverage-analysis TICKET → jq advances state
+    │
+    ├─ Stage 3: ANALYZED → AWAITING_APPROVAL
+    │    claude -p /post-test-plan TICKET → jq advances state
+    │
+    ├─ Stage 4: AWAITING_APPROVAL (approval check)
+    │    claude -p /tempest-coverage-orchestrator TICKET → reads Jira comments
+    │    orchestrator updates state to APPROVED / REJECTED / TIMED_OUT
+    │
+    └─ Stage 5: APPROVED → IMPLEMENTING
+         claude -p /implement-tempest-tests TICKET → jq advances state
+```
+
+Key properties:
+- **Bash owns state transitions** — reads `pipeline-state.json` with `jq`, writes after each stage
+- **Each `claude` call does one AI task** in a fresh session (no sub-skill chaining)
+- **Failure is isolated** — a failed stage leaves the ticket at its current stage; next run retries
+- **No lock file** — bash is single-process, no coordination needed
+
+The orchestrator skill (`/tempest-coverage-orchestrator`) is used only in Stage 4 for approval detection, and for manual operations (`--status`, `--retry`, `--reset-to`, `--submitted`).
+
 ## Components
 
 ### Skills (User-Facing)
 
-Skills are invoked with `/skill-name` and produce markdown output for humans. They also support `--orchestrator-mode` to return structured JSON when called programmatically by the orchestrator.
+Skills are invoked with `/skill-name` and produce markdown output for humans. In automated runs they are called directly by `run-pipeline.sh`, not chained through the orchestrator.
 
 **jira-coverage-analysis:**
 - Purpose: Identify test coverage gaps

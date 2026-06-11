@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Pipeline backbone is now bash-level** — `scripts/run-pipeline.sh` handles all stage routing
+  and state transitions via `jq`. Each stage calls one focused `claude` skill session directly,
+  instead of routing through the orchestrator skill. Eliminates the stale-lock and stage-routing
+  bugs from the AI-orchestrator approach. The orchestrator skill is retained for approval monitoring
+  (AWAITING_APPROVAL stage) and manual recovery (`--status`, `--retry`, `--reset-to`, `--submitted`).
+
 ### Added
 - **Orchestrator `--submitted` flag** — After running `git review`, users can now run
   `/orchestrator TICKET-ID --submitted <gerrit_url>` to set the Gerrit Link field on the Jira

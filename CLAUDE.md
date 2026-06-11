@@ -38,26 +38,25 @@ openstack-tempest-coverage-automation/
 
 ### /tempest-coverage-orchestrator
 
-Pipeline orchestrator that ties all skills into an automated workflow. Manages tickets through stages: Discovery → Analysis → Post Plan → Approval Monitoring.
+Approval monitor and manual recovery tool for the pipeline. In automated runs the pipeline is driven by `scripts/run-pipeline.sh` (bash-level stage router) — the orchestrator is called only for approval checking and manual operations.
 
-**Use for:** End-to-end pipeline execution • Batch ticket processing • Approval monitoring • Pipeline status checks
-
-**Key features:** File-based state management • Idempotent stages (safe to re-run) • Crash recovery • Dry-run mode • JQL-based ticket discovery
+**Use for:** Approval monitoring • Pipeline status checks • Manual stage recovery
 
 **State:** `~/.claude/orchestrator-state/pipeline-state.json`
 
 **Usage:**
 ```bash
-/tempest-coverage-orchestrator TICKET-ID            # Process single ticket
-/tempest-coverage-orchestrator --jql "..."           # Discover via JQL
-/tempest-coverage-orchestrator --status              # Show all tracked tickets
-/tempest-coverage-orchestrator --dry-run --jql "..."  # Preview without acting
+/tempest-coverage-orchestrator TICKET-ID --status      # Show ticket state
+/tempest-coverage-orchestrator TICKET-ID --retry       # Retry from current stage
+/tempest-coverage-orchestrator TICKET-ID --reset-to ANALYZED  # Force stage
 /tempest-coverage-orchestrator TICKET-ID --submitted <gerrit_url>  # Mark as submitted after git review
 ```
 
 **Pipeline terminal stages:** SUBMITTED (after `--submitted`), REJECTED, TIMED_OUT, CODE_REVIEW_FAILED, VERIFICATION_FAILED
 
 **discussion_flagged:** When the approval-monitor detects a neutral stakeholder comment (neither approval nor rejection), the ticket stays at AWAITING_APPROVAL and is flagged as NEEDS DISCUSSION. Re-running `/post-test-plan` after addressing feedback uses the revised template automatically.
+
+**Automated pipeline:** In the systemd-driven pipeline, `scripts/run-pipeline.sh` handles stage routing and calls skills directly. The orchestrator is invoked by that script only for the AWAITING_APPROVAL stage (approval checking).
 
 ### /jira-coverage-analysis
 
