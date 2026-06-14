@@ -1,8 +1,8 @@
 {
   "state_directory": "~/.claude/orchestrator-state",
   "state_file": "~/.claude/orchestrator-state/pipeline-state.json",
-  "jql_filter_description": "CUSTOMIZE THIS: Replace 'OSPRH' with your Jira project key. The label 'needs-tempest-coverage' must exist in your Jira instance or use a different label.",
-  "jql_filter": "project = OSPRH AND labels = needs-tempest-coverage AND status NOT IN (Closed, Done, Resolved)",
+  "jql_filter_description": "CUSTOMIZE THIS: Replace 'OSPRH' with your Jira project key. The label 'agentic-tempest-coverage' must exist in your Jira instance or use a different label.",
+  "jql_filter": "project = OSPRH AND labels = agentic-tempest-coverage AND status NOT IN (Closed, Done, Resolved)",
   "approval": {
     "threshold_votes": 1,
     "timeout_days": 7,

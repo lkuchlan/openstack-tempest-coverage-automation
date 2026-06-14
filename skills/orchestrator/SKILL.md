@@ -16,7 +16,7 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
 **Invoke as:**
 ```
 /tempest-coverage-orchestrator TICKET-ID [TICKET-ID...]
-/tempest-coverage-orchestrator --jql "project = OSPRH AND labels = needs-tempest-coverage"
+/tempest-coverage-orchestrator --jql "project = OSPRH AND labels = agentic-tempest-coverage"
 /tempest-coverage-orchestrator --status              # Show all tracked tickets
 /tempest-coverage-orchestrator TICKET-ID --retry      # Retry from current stage
 /tempest-coverage-orchestrator TICKET-ID --reset-to ANALYZED  # Force stage

@@ -89,7 +89,7 @@ JIRA_USERNAME=your-email@example.com
 JIRA_API_TOKEN=your-jira-api-token
 
 # JQL filter — tickets the pipeline will process
-PIPELINE_JQL='project = YOURPROJECT AND labels = "needs-tempest-coverage" AND status != Done'
+PIPELINE_JQL='project = YOURPROJECT AND labels = "agentic-tempest-coverage" AND status != Done'
 
 # DevStack VM (for verify-tempest-devstack skill)
 DEVSTACK_HOST=
