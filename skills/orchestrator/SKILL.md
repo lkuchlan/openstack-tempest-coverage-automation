@@ -40,6 +40,7 @@ Tie together existing skills (`/jira-coverage-analysis`, `/post-test-plan`) into
    - If `--retry` on a ticket in ERROR state: clear the error, re-enter the stage it failed at
    - If `--reset-to STAGE` on a ticket: force the ticket to that stage (for manual recovery)
    - If `--submitted <gerrit_url>`: run the VERIFIED → SUBMITTED handler for that ticket (skip all other stages)
+   - If `--force` is also present alongside `--submitted`: set `force_submit = true` (skips repo verification; use only when the repo name is non-standard but correct)
 
 2. **Acquire pipeline lock** (skip if `--status` or `--dry-run`):
 
@@ -794,6 +795,56 @@ No further action. Continue to next ticket.
 
 **Condition:** `--submitted <gerrit_url>` flag is passed, ticket exists in state (any stage is accepted — user may call this immediately after `git review` without waiting for the next orchestrator run).
 
+**PRE-ACTION: Repo Name Verification**
+
+Skip this entire block if `force_submit == true` (print `⚠️  --force flag set — skipping repo verification` and proceed to Action 1).
+
+**Step A — Extract repo name from URL:**
+
+Examine `<gerrit_url>` using these rules in order:
+
+1. **Standard format** — URL matches `review.opendev.org/c/{repo-path}/+/{number}`:
+   - Extract `{repo-path}` (the segment between `/c/` and `/+/`)
+   - Example: `https://review.opendev.org/c/openstack/cinder-tempest-plugin/+/12345` → `REPO_NAME = openstack/cinder-tempest-plugin`, `REPO_SOURCE = "url"`
+
+2. **Hash/query format** — URL matches `review.opendev.org/#/q/{hash}` or `/q/{hash}`:
+   - Repo is not in the URL; need a minimal API call
+   - Extract `{hash}` → `GERRIT_CHANGE_ID = {hash}`, `REPO_SOURCE = "api"`
+
+3. **Fallback** — URL doesn't match any known format:
+   - Print: `⚠️  Cannot parse repo from URL '<gerrit_url>'. Skipping verification and proceeding.`
+   - Skip to Action 1.
+
+**Step B — Fetch repo via API if needed (hash format only):**
+
+Only run if `REPO_SOURCE == "api"`. Call:
+```bash
+GERRIT_RAW=$(curl -sf --max-time 15 "https://review.opendev.org/changes/${GERRIT_CHANGE_ID}" 2>&1)
+CURL_EXIT=$?
+```
+No `o=` options — the default response includes the `project` field.
+
+If `CURL_EXIT != 0`: print `⚠️  Gerrit API unreachable (exit {CURL_EXIT}). Skipping verification and proceeding.` and skip to Action 1.
+
+Strip the `)]}'\n` prefix from the response and parse JSON. Extract the `project` field as `REPO_NAME`. If malformed or `project` missing: print a one-line warning and skip to Action 1.
+
+**Step C — Check if repo name contains "tempest":**
+
+Check whether `REPO_NAME` contains the string `tempest` (case-insensitive).
+
+- If **yes**: print `✅ Gerrit repo verified: '{REPO_NAME}' contains 'tempest'` and proceed to Action 1.
+- If **no**:
+  ```
+  ❌ Gerrit verification failed: repo '{REPO_NAME}' does not appear to be a Tempest repository.
+     Ticket: {TICKET-ID}
+     URL: <gerrit_url>
+
+     Expected a repo whose name contains 'tempest' (e.g., cinder-tempest-plugin).
+     If this is correct (e.g., Tempest tests live in a non-standard repo), re-run with:
+       /orchestrator {TICKET-ID} --submitted <gerrit_url> --force
+  ```
+  Stop. Do NOT write state. Do NOT proceed to Action 1. Release the pipeline lock.
+
 **Actions:**
 1. Update Jira issue:
    - Set `customfield_10530` (Gerrit Link field) to `<gerrit_url>`:
@@ -813,13 +864,19 @@ No further action. Continue to next ticket.
      "entered_stage_at": "<current ISO-8601 timestamp>",
      "submitted_at": "<current ISO-8601 timestamp>",
      "gerrit_url": "<gerrit_url>",
+     "gerrit_verification": {
+       "repo": "<REPO_NAME>",
+       "passed": true
+     },
      "history": [..., {"stage": "SUBMITTED", "at": "<timestamp>"}]
    }
    ```
+   If `--force` was used, set `"gerrit_verification": {"skipped": true}` instead.
 3. **Checkpoint:** Write state to disk immediately
 4. Print confirmation:
    ```
    ✅ TICKET-ID marked as SUBMITTED
+      Repo: <REPO_NAME>
       Gerrit Link field updated: <gerrit_url>
       Jira comment posted.
    ```
