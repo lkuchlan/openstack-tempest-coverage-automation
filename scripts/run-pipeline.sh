@@ -92,6 +92,14 @@ for var in JIRA_URL JIRA_USERNAME JIRA_API_TOKEN PIPELINE_JQL; do
     fi
 done
 
+# ── Update Claude Code ────────────────────────────────────────────────────────
+
+log "Updating Claude Code..."
+sudo npm update -g @anthropic-ai/claude-code 2>&1 | tee -a "$LOG_FILE" || {
+    log "WARNING: Claude Code update failed, continuing with current version"
+}
+log "Claude Code version: $(claude --version 2>/dev/null || echo 'unknown')"
+
 # ── Pull latest skills ────────────────────────────────────────────────────────
 
 log "Pulling latest skills from origin/main..."
