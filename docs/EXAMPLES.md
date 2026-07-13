@@ -25,10 +25,11 @@ claude
 # ✅ Validated: tox pep8 + py3 passed
 # ✅ Branch: tempest-coverage-OSPRH-22613
 
-# Step 3: Review and push
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-git diff HEAD~1
-git push origin tempest-coverage-OSPRH-22613
+# Step 3: Submit to Gerrit (branch pushed to GitHub fork by pipeline)
+# Check the Jira ticket for a verified comment with fetch instructions, then:
+git fetch ssh://git@github.com/lkuchlan/cinder-tempest-plugin tempest-coverage-OSPRH-22613
+git checkout tempest-coverage-OSPRH-22613
+git review
 ```
 
 ## Example 2: Sprint Planning with Batch Analysis
@@ -104,9 +105,11 @@ cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
 git diff HEAD~1  # Review changes
 tox -e pep8,py3  # Additional validation
 
-# Step 6: Push to remote for review
-git push origin tempest-coverage-OSPRH-22613
-git review  # If using Gerrit for upstream
+# Step 6: Submit to Gerrit (branch already pushed to GitHub fork by pipeline)
+# Check the Jira ticket for a verified comment with fetch instructions, then:
+git fetch ssh://git@github.com/lkuchlan/cinder-tempest-plugin tempest-coverage-OSPRH-22613
+git checkout tempest-coverage-OSPRH-22613
+git review
 
 # Step 7: Mark ticket as submitted in Jira (after git review)
 /orchestrator OSPRH-22613 --submitted <gerrit_url>
@@ -137,10 +140,11 @@ git review  # If using Gerrit for upstream
 # ✅ Tests implemented and validated
 # ✅ Branch: tempest-coverage-OSPRH-22613
 
-# Step 3: Review and push
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-tox -e pep8,py3
-git push origin tempest-coverage-OSPRH-22613
+# Step 3: Submit to Gerrit (branch pushed to GitHub fork by pipeline)
+# Check the Jira ticket for fetch instructions, then:
+git fetch ssh://git@github.com/lkuchlan/cinder-tempest-plugin tempest-coverage-OSPRH-22613
+git checkout tempest-coverage-OSPRH-22613
+git review
 ```
 
 **When to use:**

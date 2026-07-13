@@ -610,7 +610,7 @@ Provide comprehensive structured report with mandatory final recap.
 - **Branch:** tempest-coverage-{ticket-id}
 - **Commit:** Created with proper message
 - **Status:** Ready for review
-- **Push:** NOT pushed (user controls)
+- **Push:** NOT pushed by this skill — when run via the orchestrator pipeline, the branch is pushed to the GitHub fork automatically after DevStack verification and fetch instructions are posted to the Jira ticket
 
 ## Next Steps
 1. Review: `git diff main`
@@ -787,11 +787,24 @@ tox -e py3 -- {module.path}.{TestClass}
 4. ✅ Ensure commit message is accurate
 
 **Submission:**
+
+*Via orchestrator pipeline (automated):*
+After verification, the pipeline pushes the branch to the GitHub fork and posts fetch
+instructions to the Jira ticket. Follow those instructions:
 ```bash
+git fetch ssh://git@github.com/lkuchlan/{plugin}-tempest-plugin {branch}
+git checkout {branch}
 git review
 ```
 
-**Note:** Code has NOT been pushed. You control when to submit for review.
+*Direct / manual use:*
+```bash
+git push origin {branch}
+git review
+```
+
+**Note:** This skill never pushes automatically. In the automated pipeline, the push
+happens in a separate stage after DevStack verification.
 
 ========================
 END OF RECAP

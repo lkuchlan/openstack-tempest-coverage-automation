@@ -689,13 +689,17 @@ git push origin --force --all
 - Force-push (destructive operation)
 - Skip validation (ensures quality)
 
-**User retains control:**
+**Automated pipeline:** After DevStack verification, Stage 6 in `run-pipeline.sh`
+pushes the branch to the GitHub fork and posts fetch instructions to the Jira ticket.
+The engineer then runs the three commands from the ticket — no VM access needed.
+
+**Direct / manual use:** You decide when to push:
 ```bash
-# After implementation, YOU decide when to push:
 cd ~/tempest-workspace/cinder-tempest-plugin
 git log -1  # Review commit
 git diff HEAD~1  # Review changes
 git push origin tempest-coverage-TICKET-123  # YOU push when ready
+git review
 ```
 
 ---

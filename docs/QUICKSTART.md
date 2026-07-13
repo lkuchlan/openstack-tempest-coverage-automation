@@ -63,23 +63,22 @@ claude
 - Tests: `cinder_tempest_plugin/api/volume/test_multiattach_rbac.py`
 - Validated: `tox -e pep8,py3` passed
 
-## Review and Push
+## Submit to Gerrit
+
+After verification, the pipeline pushes the branch to a GitHub fork and posts fetch
+instructions as a Jira comment. Check the ticket for the exact commands, then run on
+your local machine inside your plugin clone:
 
 ```bash
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
+git fetch ssh://git@github.com/lkuchlan/cinder-tempest-plugin tempest-coverage-OSPRH-22613
+git checkout tempest-coverage-OSPRH-22613
+git review
+```
 
-# Review changes
-git log -1
-git diff HEAD~1
+After `git review` completes, mark the ticket as submitted:
 
-# Additional validation (optional)
-tox -e pep8,py3
-
-# Push for review
-git push origin tempest-coverage-OSPRH-22613
-git review  # If using Gerrit
-
-# After git review — mark ticket as submitted in Jira
+```bash
+# In Claude Code
 > /orchestrator OSPRH-22613 --submitted <gerrit_url>
 ```
 
