@@ -120,7 +120,7 @@ else
 fi
 
 # ── 6. Register Claude Code skills ────────────────────────────────────────────
-echo "[6/8] Registering Claude Code skills..."
+echo "[6/9] Registering Claude Code skills..."
 mkdir -p "$HOME/.claude/skills"
 for skill in orchestrator jira-coverage-analysis post-test-plan implement-tempest-tests verify-tempest-devstack; do
     ln -sfn "$REPO_DIR/skills/$skill" "$HOME/.claude/skills/$skill"
@@ -128,7 +128,7 @@ for skill in orchestrator jira-coverage-analysis post-test-plan implement-tempes
 done
 
 # ── 7. Install systemd user timer ─────────────────────────────────────────────
-echo "[7/8] Installing systemd user timer..."
+echo "[7/9] Installing systemd user timer..."
 mkdir -p "$SYSTEMD_USER_DIR"
 
 cp "$REPO_DIR/systemd/tempest-pipeline.service" "$SYSTEMD_USER_DIR/"
@@ -142,8 +142,38 @@ systemctl --user enable tempest-pipeline.timer
 echo "  Timer installed and enabled."
 
 # ── 7. Create log directory ────────────────────────────────────────────────────
-echo "[8/8] Creating log directory..."
+echo "[8/9] Creating log directory..."
 mkdir -p "$HOME/.claude/orchestrator-state/logs"
+
+# ── 9. GitHub fork push key ───────────────────────────────────────────────────
+echo "[9/9] Setting up GitHub fork push SSH key..."
+FORK_KEY="$HOME/.ssh/github_fork_push"
+
+if [ ! -f "$FORK_KEY" ]; then
+    ssh-keygen -t ed25519 -f "$FORK_KEY" -C "agentic-pipeline-fork-push" -N ""
+    echo ""
+    echo "  === GitHub fork push key generated ==="
+    echo "  Add the following public key to each GitHub fork with WRITE access:"
+    echo "  (fork Settings → Deploy keys → Add deploy key → check 'Allow write access')"
+    echo ""
+    cat "$FORK_KEY.pub"
+    echo ""
+else
+    echo "  Fork push key already exists: $FORK_KEY"
+fi
+
+if ! grep -q "github_fork_push" "$HOME/.ssh/config" 2>/dev/null; then
+    mkdir -p "$HOME/.ssh"
+    cat >> "$HOME/.ssh/config" << 'EOF'
+
+Host github-fork
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/github_fork_push
+  IdentitiesOnly yes
+EOF
+    echo "  Added github-fork host to ~/.ssh/config"
+fi
 
 # ── Done ───────────────────────────────────────────────────────────────────────
 echo ""
@@ -155,11 +185,16 @@ echo "       nano $ENV_FILE"
 echo "     Uncomment ANTHROPIC_API_KEY or GOOGLE_APPLICATION_CREDENTIALS"
 echo "     (see comments in the file for which to use)"
 echo ""
-echo "  2. Start the pipeline timer:"
+echo "  2. Add the fork push public key ($FORK_KEY.pub) to each GitHub fork"
+echo "     with WRITE access (Settings → Deploy keys)."
+echo "     Forks needed: cinder-tempest-plugin, manila-tempest-plugin,"
+echo "     glance-tempest-plugin, barbican-tempest-plugin"
+echo ""
+echo "  3. Start the pipeline timer:"
 echo "       systemctl --user start tempest-pipeline.timer"
 echo ""
-echo "  3. Test manually:"
+echo "  4. Test manually:"
 echo "       bash $REPO_DIR/scripts/run-pipeline.sh"
 echo ""
-echo "  4. Check timer status:"
+echo "  5. Check timer status:"
 echo "       systemctl --user status tempest-pipeline.timer"

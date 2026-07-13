@@ -409,6 +409,7 @@ No further action. Continue to next ticket.
      "implementation_details": {
        "test_files": ["path/to/test_file.py"],
        "branch": "tempest-coverage-TICKET-ID",
+       "repository_path": "/home/ubuntu/tempest-workspace/cinder-tempest-plugin",
        "test_module": "plugin.tests.api.test_feature",
        "service": "cinder",
        "test_methods": ["test_method_1", "test_method_2"]
@@ -546,16 +547,36 @@ No further action. Continue to next ticket.
      "history": [..., {"stage": "VERIFIED", "at": "<timestamp>"}]
    }
    ```
-2. **Update Jira** (if MCP available):
+2. **Push branch to GitHub fork:**
+   - Read `implementation_details.repository_path` from ticket state
+   - Extract `plugin_name` = basename of `repository_path` (e.g. `cinder-tempest-plugin`)
+   - Look up `fork_url` from `config.verification.github_forks[plugin_name]`
+   - If no fork URL is found: skip push and note the omission in the Jira comment body
+   - If fork URL found, run inside `repository_path`:
+     ```bash
+     SSH_KEY=$(eval echo config.verification.fork_push_ssh_key)
+     GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+       git remote set-url fork-push {fork_url} 2>/dev/null \
+       || GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+          git remote add fork-push {fork_url}
+     GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+       git push fork-push {branch_name}
+     ```
+   - Derive substitution variables for the Jira comment:
+     - `{branch_name}`    ← `implementation_details.branch`
+     - `{plugin_name}`    ← plugin name without `-tempest-plugin` suffix (e.g. `cinder`)
+     - `{test_file_path}` ← first entry of `implementation_details.test_files`
+3. **Update Jira** (if MCP available):
    - Post a comment using the `verified_jira_comment` template from `config.json`:
      ```
-     Use mcp__mcp-atlassian__add_comment
+     Use mcp__mcp-atlassian__jira_add_comment
      Body: config.verification.verified_jira_comment
-           Substitute: {pass_count}, {total_count}, {devstack_host}, {backend_info}
+           Substitute: {pass_count}, {total_count}, {devstack_host}, {backend_info},
+                       {branch_name}, {plugin_name}, {test_file_path}
            {test_results_table} = Markdown table with columns: Test | Status | Duration
      ```
    - Add label: `automation-verified`
-3. **Checkpoint:** Write state to disk immediately
+4. **Checkpoint:** Write state to disk immediately
 
 ---
 

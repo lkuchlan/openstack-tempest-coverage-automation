@@ -179,20 +179,114 @@ while IFS= read -r ticket; do
 done <<< "$(tickets_at_stage APPROVED)"
 
 update_last_run
+
+# ── STAGE 5.5: Sync GitHub forks with upstream ───────────────────────────────
+# Keep fork master branches current so feature branches are based on recent code.
+log "Syncing GitHub forks with upstream..."
+FORK_CONFIG="$REPO_DIR/skills/orchestrator/config.json"
+SSH_KEY="${HOME}/.ssh/github_fork_push"
+PLUGINS_WORKSPACE="${HOME}/tempest-workspace"
+
+python3 -c "
+import json, sys
+cfg = json.load(open('$FORK_CONFIG'))
+for plugin, url in cfg.get('verification', {}).get('github_forks', {}).items():
+    print(f'{plugin} {url}')
+" 2>/dev/null | while IFS=' ' read -r plugin fork_url; do
+    repo_path="$PLUGINS_WORKSPACE/$plugin"
+    [ -d "$repo_path/.git" ] || continue
+
+    git -C "$repo_path" fetch origin --quiet 2>&1 | tee -a "$LOG_FILE" || true
+
+    GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+        git -C "$repo_path" remote set-url fork-push "$fork_url" 2>/dev/null \
+        || GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+           git -C "$repo_path" remote add fork-push "$fork_url"
+
+    if GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+        git -C "$repo_path" push fork-push "origin/HEAD:refs/heads/master" \
+        --force-with-lease 2>&1 | tee -a "$LOG_FILE"; then
+        log "$plugin fork synced with upstream"
+    else
+        log "WARNING: $plugin fork sync failed (continuing)"
+    fi
+done
+
+# ── STAGE 6: Push VERIFIED branches to GitHub fork ───────────────────────────
+# Deterministic bash-level push — more reliable than asking Claude to run git.
+# Reads implementation_details from pipeline-state.json and pushes each branch.
+FORK_CONFIG="$REPO_DIR/skills/orchestrator/config.json"
+SSH_KEY="${HOME}/.ssh/github_fork_push"
+
+while IFS= read -r ticket; do
+    [ -z "$ticket" ] && continue
+
+    REPO_PATH=$(jq -r --arg t "$ticket" \
+        '.tickets[$t].implementation_details.repository_path // empty' "$STATE_FILE" 2>/dev/null || true)
+    BRANCH=$(jq -r --arg t "$ticket" \
+        '.tickets[$t].implementation_details.branch // empty' "$STATE_FILE" 2>/dev/null || true)
+
+    if [ -z "$REPO_PATH" ] || [ -z "$BRANCH" ]; then
+        log "WARNING: $ticket — no implementation_details, skipping fork push"
+        continue
+    fi
+
+    PLUGIN=$(basename "$REPO_PATH")
+    FORK_URL=$(python3 -c "
+import json, sys
+cfg = json.load(open('$FORK_CONFIG'))
+forks = cfg.get('verification', {}).get('github_forks', {})
+print(forks.get('$PLUGIN', ''))
+" 2>/dev/null)
+
+    if [ -z "$FORK_URL" ]; then
+        log "WARNING: $ticket — no fork configured for $PLUGIN, skipping push"
+        continue
+    fi
+
+    if [ ! -d "$REPO_PATH" ]; then
+        log "WARNING: $ticket — repo not found at $REPO_PATH, skipping push"
+        continue
+    fi
+
+    # Check if branch already pushed (avoid redundant pushes)
+    PLUGIN_NAME="${PLUGIN%-tempest-plugin}"
+    if GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+        git -C "$REPO_PATH" ls-remote --exit-code fork-push "$BRANCH" >/dev/null 2>&1; then
+        log "$ticket: branch $BRANCH already in fork, skipping"
+        continue
+    fi
+
+    log "$ticket: pushing $BRANCH to $FORK_URL..."
+    GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+        git -C "$REPO_PATH" remote set-url fork-push "$FORK_URL" 2>/dev/null \
+        || GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+           git -C "$REPO_PATH" remote add fork-push "$FORK_URL"
+
+    if GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
+        git -C "$REPO_PATH" push fork-push "$BRANCH" 2>&1 | tee -a "$LOG_FILE"; then
+        log "$ticket: ✅ pushed to github.com/lkuchlan/$PLUGIN"
+    else
+        log "WARNING: $ticket — fork push failed for $BRANCH"
+    fi
+done <<< "$(tickets_at_stage VERIFIED)"
+
 log "=== Pipeline run complete ==="
 
 # ── Auto git-review if enabled ────────────────────────────────────────────────
 if [ "${AUTO_GIT_REVIEW:-false}" = "true" ]; then
     log "AUTO_GIT_REVIEW enabled — checking for VERIFIED tickets..."
-    VERIFIED=$(tickets_at_stage VERIFIED)
-    for ticket in $VERIFIED; do
+    for ticket in $(tickets_at_stage VERIFIED); do
         log "Auto-submitting $ticket via git review..."
-        BRANCH="tempest-coverage-${ticket,,}"
-        PLUGIN_DIR=$(jq -r --arg t "$ticket" '.tickets[$t].metadata.plugin_repo // empty' "$STATE_FILE" 2>/dev/null || true)
-        if [ -n "$PLUGIN_DIR" ] && [ -d "$PLUGIN_DIR" ]; then
+        PLUGIN_DIR=$(jq -r --arg t "$ticket" \
+            '.tickets[$t].implementation_details.repository_path // empty' "$STATE_FILE" 2>/dev/null || true)
+        BRANCH=$(jq -r --arg t "$ticket" \
+            '.tickets[$t].implementation_details.branch // empty' "$STATE_FILE" 2>/dev/null || true)
+        if [ -n "$PLUGIN_DIR" ] && [ -d "$PLUGIN_DIR" ] && [ -n "$BRANCH" ]; then
             git -C "$PLUGIN_DIR" checkout "$BRANCH" 2>/dev/null && \
             git -C "$PLUGIN_DIR" review && \
-            claude -p "/tempest-coverage-orchestrator $ticket --submitted <gerrit-url>" 2>&1 | tee -a "$LOG_FILE" || \
+            claude -p "/tempest-coverage-orchestrator $ticket --submitted <gerrit-url>" \
+                2>&1 | tee -a "$LOG_FILE" || \
             log "WARNING: git review failed for $ticket"
         fi
     done
