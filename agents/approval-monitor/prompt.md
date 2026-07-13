@@ -59,7 +59,7 @@ cat ~/.claude/skills/tempest-coverage/config.json
 ```
 
 Extract from `jira_integration`:
-- `approval_keywords` (default: `["approved", "LGTM", "looks good"]`)
+- `approval_keywords` (default: `["approved", "Approved", "LGTM", "looks good"]`)
 - `rejection_keywords` (default: `["rejected", "not approved", "decline"]`)
 - `timeout_days` (default: `7`)
 
@@ -132,6 +132,45 @@ If found:
 }
 ```
 Continue to next ticket.
+
+#### 3e.5. Check for 👍 reaction on the plan comment
+
+If no approval was found via text comments, check whether the plan comment has a 👍 reaction.
+
+1. From the comments fetched in step 3b, find the comment whose body contains "Test Automation Plan". Record its `id` as `plan_comment_id`.
+
+2. If `plan_comment_id` is found, fetch that specific comment via the Jira REST API:
+   ```bash
+   source ~/.config/tempest-pipeline/.env
+   REACTION_RESULT=$(curl -s -u "${JIRA_USERNAME}:${JIRA_API_TOKEN}" \
+     "${JIRA_URL}/rest/api/3/issue/${ticket_id}/comment/${plan_comment_id}" \
+     | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+for r in data.get('reactions', {}).get('reactionSummary', []):
+    if r.get('emoji') == '👍' and r.get('count', 0) > 0:
+        print('approved'); sys.exit(0)
+if data.get('likes', {}).get('count', 0) > 0:
+    print('approved'); sys.exit(0)
+print('none')
+")
+   ```
+
+3. If `REACTION_RESULT == "approved"`:
+   ```json
+   {
+     "stage": "APPROVED",
+     "entered_stage_at": "<ISO-8601 now>",
+     "approved_by": "👍 reaction on plan comment",
+     "approved_at": "<ISO-8601 now>",
+     "history": ["...", {"stage": "APPROVED", "at": "<ISO-8601 now>"}]
+   }
+   ```
+   Continue to next ticket (skip steps 3f and 3g).
+
+4. If the curl call fails or returns an error, log a warning and continue to step 3f — do not let a reaction-check failure block the text-comment check.
+
+---
 
 #### 3f. Check for discussion (neutral human comment)
 

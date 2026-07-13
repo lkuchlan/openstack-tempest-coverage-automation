@@ -18,7 +18,7 @@
 
 **Action:** Comment **"Approved"** below to implement these tests
 
-**Alternative:** React with 👍 to this comment (if your Jira supports reactions)
+**Alternative:** React with 👍 to this comment
 
 **Implementation:** {{IMPLEMENTATION_LOCATION}}
 

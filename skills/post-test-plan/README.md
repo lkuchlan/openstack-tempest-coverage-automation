@@ -68,7 +68,7 @@ Shows what tests already exist (no changes needed)
 ### 5. Approval Section (Hybrid)
 Stakeholders can approve via:
 - **Option 1:** Comment "Approved" (recommended)
-- **Option 2:** React with 👍 (if Jira supports reactions)
+- **Option 2:** React with 👍 to the plan comment
 
 ## Duplicate Detection
 
@@ -230,7 +230,7 @@ When a stakeholder leaves a comment that is neither an approval nor a rejection 
 
 # Will check Jira for:
 # - Comments containing "approved", "LGTM", etc.
-# - 👍 reactions (future)
+# - 👍 reactions (supported)
 # 
 # If approved → Proceed with implementation
 # If not approved → Show message: "Waiting for approval in Jira"
@@ -297,7 +297,7 @@ The skill uses **Format 1: Detailed Tables** by default.
 ## Future Enhancements
 
 **Planned features:**
-- [ ] Emoji reaction detection for approval
+- [x] Emoji reaction detection for approval
 - [ ] Auto-post flag in `/jira-coverage-analysis --post`
 - [ ] Approval checking in `/implement-tempest-tests --check-approval`
 - [ ] Custom approval workflows
