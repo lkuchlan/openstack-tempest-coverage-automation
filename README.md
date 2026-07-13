@@ -31,6 +31,12 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 # It discovers tickets via JQL, advances each through stages, and posts plans to Jira.
 # The only human step is commenting "Approved" on the Jira ticket.
 
+# After tests are verified, a Jira comment is posted with ready-to-run commands:
+#   git fetch ssh://git@github.com/lkuchlan/cinder-tempest-plugin tempest-coverage-OSPRH-22613
+#   git checkout tempest-coverage-OSPRH-22613
+#   git review
+# No VM access needed — just run those three commands on your local machine.
+
 # Manual operations (recovery, status, submission):
 /orchestrator OSPRH-22613 --status               # Check pipeline state
 /orchestrator OSPRH-22613 --submitted <gerrit_url>  # Update Jira after git review
@@ -49,6 +55,7 @@ Transform Jira tickets into production-ready Tempest tests **in minutes instead 
 - 📊 **Structured Reports** - Gap analysis with priorities and effort estimates
 - 🎓 **RBAC, Negative, Scenario Tests** - Comprehensive coverage types
 - 🕐 **Background Approval Monitoring** - Automatically polls Jira every 4 hours for stakeholder approval, no manual re-triggering needed
+- 🔀 **Secure Branch Handoff** - Verified branches pushed to a GitHub fork automatically; engineers receive fetch+`git review` instructions in Jira with no VM access required
 
 ---
 
@@ -360,13 +367,12 @@ claude
 # Branch: tempest-coverage-OSPRH-22613
 # Commit: "Add Tempest coverage for <feature>"
 
-# Step 3: Review and push
-cd $TEMPEST_WORKSPACE/cinder-tempest-plugin
-git log -1  # Review commit
-git diff HEAD~1  # Review changes
-tox -e pep8,py3  # Additional validation
-git push origin tempest-coverage-OSPRH-22613
-git review  # If using Gerrit
+# Step 3: Submit to Gerrit
+# The pipeline pushes the branch to a GitHub fork and posts the exact commands to Jira.
+# Check the Jira ticket for the comment, or run on your local machine:
+git fetch ssh://git@github.com/lkuchlan/cinder-tempest-plugin tempest-coverage-OSPRH-22613
+git checkout tempest-coverage-OSPRH-22613
+git review
 
 # Step 4: Mark as submitted in Jira (after git review)
 > /orchestrator OSPRH-22613 --submitted <gerrit_url>
