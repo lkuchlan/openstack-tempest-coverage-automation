@@ -263,12 +263,14 @@ done <<< "$(tickets_at_stage IMPLEMENTING)"
 while IFS= read -r ticket; do
     [ -z "$ticket" ] && continue
     log "Verifying tests on DevStack for: $ticket"
-    if claude --permission-mode bypassPermissions \
+    VERIFY_OUTPUT=$(claude --permission-mode bypassPermissions \
         -p "This is an automated pipeline run. Proceed autonomously — do NOT ask for confirmation. /verify-tempest-devstack $ticket" \
-        2>&1 | tee -a "$LOG_FILE"; then
+        2>&1 | tee -a "$LOG_FILE") || true
+    # Advance only on explicit success — the skill prints "Overall Status: PASSED"
+    if echo "$VERIFY_OUTPUT" | grep -q "Overall Status: PASSED"; then
         advance_ticket "$ticket" "VERIFIED"
     else
-        log "WARNING: DevStack verification failed for $ticket — will retry next run"
+        log "WARNING: DevStack verification did not pass for $ticket — will retry next run"
     fi
 done <<< "$(tickets_at_stage VERIFYING)"
 
