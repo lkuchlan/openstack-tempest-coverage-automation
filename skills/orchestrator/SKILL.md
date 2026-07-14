@@ -523,7 +523,7 @@ No further action. Continue to next ticket.
    - If `verification_status == "DEFERRED"`: the VM is locked by another ticket. Keep the ticket at `CODE_REVIEW` stage — do NOT advance, do NOT error. The next orchestrator run will retry automatically.
    - If `verification_status == "DEPLOYMENT_FAILED"`: transition to `ERROR` with `error_type: "deployment_failure"` — do NOT trigger fix+retry loop (this is an infrastructure issue, not a test code issue). Post Jira comment with deployment error details.
    - If `verification_status == "SKIPPED"`: transition to `VERIFICATION_SKIPPED` — the environment cannot be deployed on DevStack (e.g., requires Ceph, multi-node, SR-IOV). Post Jira comment explaining what manual verification is needed.
-   - If `verification_status == "FAILED"` OR DevStack did not pass: transition to `VERIFIED` with `devstack_verification_result = "skipped"` — post ⚠️+🚀 Jira comment with Gerrit submission instructions
+   - If `verification_status == "FAILED"` OR DevStack did not pass: transition to `VERIFICATION_SKIPPED` with `devstack_verification_result = "skipped"` — post ⚠️+🚀 Jira comment with Gerrit submission instructions
 
 **If verification skill fails (crash, SSH error, etc.):**
 - Set stage to `ERROR` with `stage_when_failed: "CODE_REVIEW"` and error details
@@ -741,7 +741,7 @@ No further action. Continue to next ticket.
 7. **Checkpoint:** Write state to disk immediately
 8. **Determine next stage immediately:**
    - If `verification_status == "PASSED"`: transition to `VERIFIED`
-   - If `verification_status == "FAILED"` OR DevStack did not pass: transition to `VERIFIED` with `devstack_verification_result = "skipped"` — post ⚠️+🚀 Jira comment
+   - If `verification_status == "FAILED"` OR DevStack did not pass: transition to `VERIFICATION_SKIPPED` with `devstack_verification_result = "skipped"` — post ⚠️+🚀 Jira comment
 
 **If re-implementation or re-verification fails:**
 - Set stage to `ERROR` with `stage_when_failed: "FIX_IN_PROGRESS"` and error details
@@ -874,7 +874,7 @@ Check whether `REPO_NAME` contains the string `tempest` (case-insensitive).
 
 ---
 
-#### Terminal Stages: VERIFIED / SUBMITTED / CODE_REVIEW_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
+#### Terminal Stages: VERIFIED / VERIFICATION_SKIPPED / SUBMITTED / CODE_REVIEW_FAILED / REJECTED / TIMED_OUT / ERROR
 
 **Condition:** Ticket is at any terminal stage
 
@@ -930,7 +930,7 @@ Log format per ticket:
 [2026-05-07T08:17:00Z] OSPRH-22616: APPROVED → IMPLEMENTING (3 tests implemented)
 [2026-05-07T08:17:00Z] OSPRH-22617: IMPLEMENTING → VERIFIED (3/3 tests passed on DevStack)
 [2026-05-07T08:17:00Z] OSPRH-22618: VERIFYING → FIX_IN_PROGRESS (1 test failed, retrying)
-[2026-05-07T08:17:00Z] OSPRH-22619: VERIFYING → VERIFIED (DevStack skipped — ⚠️ Jira comment posted)
+[2026-05-07T08:17:00Z] OSPRH-22619: VERIFYING → VERIFICATION_SKIPPED (DevStack did not pass — ⚠️ Jira comment posted)
 [2026-05-07T08:17:00Z] OSPRH-22620: VERIFYING → VERIFICATION_SKIPPED (requires multi-node)
 [2026-05-07T08:17:00Z] OSPRH-22621: IMPLEMENTING → IMPLEMENTING (deferred, VM locked by OSPRH-22617)
 ```

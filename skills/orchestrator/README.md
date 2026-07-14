@@ -32,14 +32,17 @@ APPROVED
 IMPLEMENTING
     ↓  automated code review (Stage 5.6)
 VERIFYING
-    ↓  /verify-tempest-devstack (always advances regardless of outcome)
-VERIFIED
-    ↓  git review (manual), then --submitted
+    ↓  /verify-tempest-devstack
+    ↓  Pass                          Fail
+VERIFIED                    VERIFICATION_SKIPPED
+    ↓  git review (manual),         ↓  manual verify recommended,
+       then --submitted                 then git review + --submitted
 SUBMITTED  ← terminal
 
 REJECTED           ← terminal (approval denied)
 TIMED_OUT          ← terminal (no response in 7 days)
 CODE_REVIEW_FAILED ← terminal (Tempest standards violations)
+VERIFICATION_SKIPPED ← DevStack did not pass; branch pushed to fork, manual verify needed
 ```
 
 **discussion_flagged:** A sub-state of AWAITING_APPROVAL. Set when the approval-monitor detects a neutral stakeholder comment (neither approval nor rejection). The ticket stays at AWAITING_APPROVAL; user is notified. Re-running `/post-test-plan` after addressing feedback uses the revised template automatically.

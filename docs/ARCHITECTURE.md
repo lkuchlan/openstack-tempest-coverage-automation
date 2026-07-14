@@ -72,15 +72,15 @@ run-pipeline.sh  ← bash-level stage router
     │    → CODE_REVIEW_PASSED: advance VERIFYING
     │    → CODE_REVIEW_FAILED: terminal (Tempest standards violations)
     │
-    ├─ Stage 5.7: VERIFYING → VERIFIED (DevStack verification)
+    ├─ Stage 5.7: VERIFYING → VERIFIED / VERIFICATION_SKIPPED (DevStack verification)
     │    claude -p /verify-tempest-devstack TICKET
     │    Pass → VERIFIED + posts ✅ Jira comment with git review instructions
-    │    Fail → VERIFIED + posts ⚠️+🚀 Jira comment (always advances)
+    │    Fail → VERIFICATION_SKIPPED + posts ⚠️+🚀 Jira comment (manual verify needed)
     │
     ├─ Stage 5.8: Fork sync (keep fork master branches current)
     │    git push fork-push origin/HEAD:refs/heads/master
     │
-    └─ Stage 6: VERIFIED branches → push to GitHub fork
+    └─ Stage 6: VERIFIED + VERIFICATION_SKIPPED branches → push to GitHub fork
          git push fork-push BRANCH
 ```
 
@@ -247,8 +247,8 @@ Implementation Output (test files on branch)
     +──── PASSED → VERIFIED (update Jira) → git review (manual)
     |              → /orchestrator TICKET --submitted <url> → SUBMITTED
     |
-    +──── NOT PASSED → Posts ⚠️ DevStack Verification Skipped + 🚀 Gerrit instructions
-                      Pipeline advances to VERIFIED regardless
+    +──── NOT PASSED → VERIFICATION_SKIPPED
+                      Posts ⚠️ DevStack Verification Skipped + 🚀 Gerrit instructions
                       (Manual verification recommended before merging)
 ```
 

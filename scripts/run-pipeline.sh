@@ -256,10 +256,10 @@ Output nothing else." 2>&1 | tee -a "$LOG_FILE") || true
     fi
 done <<< "$(tickets_at_stage IMPLEMENTING)"
 
-# ── STAGE 5.7: VERIFYING → VERIFIED (DevStack verification) ──────────────────
+# ── STAGE 5.7: VERIFYING → VERIFIED / VERIFICATION_SKIPPED ───────────────────
 # Runs the generated tests against a real OpenStack deployment on DevStack.
 # Pass → VERIFIED (skill posts ✅ Jira comment with git review instructions)
-# Fail → VERIFIED (posts ⚠️ + 🚀 Jira comment; advances regardless)
+# Fail → VERIFICATION_SKIPPED (posts ⚠️ + 🚀 Jira comment; manual verify needed)
 while IFS= read -r ticket; do
     [ -z "$ticket" ] && continue
     log "Verifying tests on DevStack for: $ticket"
@@ -271,7 +271,7 @@ while IFS= read -r ticket; do
             "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
         advance_ticket "$ticket" "VERIFIED"
     else
-        log "WARNING: DevStack verification did not pass for $ticket — advancing with verification skipped"
+        log "WARNING: DevStack verification did not pass for $ticket — advancing to VERIFICATION_SKIPPED"
         jq --arg t "$ticket" '.tickets[$t].devstack_verification_result = "skipped"' \
             "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
         # Read implementation details for Gerrit submission instructions
@@ -309,7 +309,7 @@ After your patch is merged to Gerrit, the branch can be deleted from the fork.
 
 Output only the tool call result." \
             2>&1 | tee -a "$LOG_FILE" || log "WARNING: could not post DevStack warning to Jira for $ticket"
-        advance_ticket "$ticket" "VERIFIED"
+        advance_ticket "$ticket" "VERIFICATION_SKIPPED"
     fi
 done <<< "$(tickets_at_stage VERIFYING)"
 
@@ -345,7 +345,7 @@ for plugin, url in cfg.get('verification', {}).get('github_forks', {}).items():
     fi
 done
 
-# ── STAGE 6: Push VERIFIED branches to GitHub fork ───────────────────────────
+# ── STAGE 6: Push VERIFIED / VERIFICATION_SKIPPED branches to GitHub fork ────
 # Deterministic bash-level push — more reliable than asking Claude to run git.
 # Reads implementation_details from pipeline-state.json and pushes each branch.
 FORK_CONFIG="$REPO_DIR/skills/orchestrator/config.json"
@@ -401,15 +401,15 @@ print(forks.get('$PLUGIN', ''))
     else
         log "WARNING: $ticket — fork push failed for $BRANCH"
     fi
-done <<< "$(tickets_at_stage VERIFIED)"
+done <<< "$(tickets_at_stage VERIFIED; tickets_at_stage VERIFICATION_SKIPPED)"
 
 update_last_run
 log "=== Pipeline run complete ==="
 
 # ── Auto git-review if enabled ────────────────────────────────────────────────
 if [ "${AUTO_GIT_REVIEW:-false}" = "true" ]; then
-    log "AUTO_GIT_REVIEW enabled — checking for VERIFIED tickets..."
-    for ticket in $(tickets_at_stage VERIFIED); do
+    log "AUTO_GIT_REVIEW enabled — checking for VERIFIED / VERIFICATION_SKIPPED tickets..."
+    for ticket in $(tickets_at_stage VERIFIED; tickets_at_stage VERIFICATION_SKIPPED); do
         log "Auto-submitting $ticket via git review..."
         PLUGIN_DIR=$(jq -r --arg t "$ticket" \
             '.tickets[$t].implementation_details.repository_path // empty' "$STATE_FILE" 2>/dev/null || true)

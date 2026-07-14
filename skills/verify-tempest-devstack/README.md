@@ -139,7 +139,8 @@ User provides ticket ID
     |         |
     |    [Post ⚠️ + 🚀 Jira comment]
     |         |
- VERIFIED  VERIFIED  (always advances)
+ VERIFIED  VERIFICATION_SKIPPED
+           (manual verify recommended)
 ```
 
 ## Configuration
@@ -200,7 +201,7 @@ When tests fail, the skill produces structured JSON feedback:
 }
 ```
 
-If DevStack verification does not pass, the pipeline still advances to VERIFIED, posts a ⚠️ DevStack Verification Skipped comment with 🚀 Gerrit submission instructions, and the engineer is recommended to verify manually before merging.
+If DevStack verification does not pass, the pipeline advances to VERIFICATION_SKIPPED, posts a ⚠️ DevStack Verification Skipped comment with 🚀 Gerrit submission instructions, and the engineer is recommended to verify manually before merging.
 
 ## Performance
 
