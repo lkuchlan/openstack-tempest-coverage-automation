@@ -274,6 +274,12 @@ while IFS= read -r ticket; do
         log "WARNING: DevStack verification did not pass for $ticket — advancing with verification skipped"
         jq --arg t "$ticket" '.tickets[$t].devstack_verification_result = "skipped"' \
             "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+        # Read implementation details for Gerrit submission instructions
+        SKIP_BRANCH=$(jq -r --arg t "$ticket" '.tickets[$t].implementation_details.branch // empty' "$STATE_FILE" 2>/dev/null || true)
+        SKIP_REPO=$(jq -r --arg t "$ticket" '.tickets[$t].implementation_details.repository_path // empty' "$STATE_FILE" 2>/dev/null || true)
+        SKIP_FILE=$(jq -r --arg t "$ticket" '.tickets[$t].implementation_details.test_files[0] // empty' "$STATE_FILE" 2>/dev/null || true)
+        SKIP_PLUGIN=$(basename "${SKIP_REPO:-}" 2>/dev/null || true)
+        [ -z "$SKIP_BRANCH" ] && SKIP_BRANCH="tempest-coverage-$ticket"
         claude --permission-mode bypassPermissions -p \
 "Post a comment to Jira ticket $ticket using mcp__mcp-atlassian__jira_add_comment. Use this exact Markdown:
 
@@ -282,6 +288,24 @@ while IFS= read -r ticket; do
 The automated DevStack environment could not complete verification for this ticket. The implementation passed automated code review for Tempest standards compliance.
 
 **Recommended:** Run manual verification against a live OpenStack environment before merging.
+
+---
+
+🚀 **Submit to Gerrit**
+
+The implementation branch has been pushed to GitHub. Run the following inside your \`$SKIP_PLUGIN\` clone:
+
+\`\`\`
+git fetch ssh://git@github.com/lkuchlan/$SKIP_PLUGIN $SKIP_BRANCH
+git checkout $SKIP_BRANCH
+git review
+\`\`\`
+
+**Branch:** \`$SKIP_BRANCH\`
+**Fork:** github.com/lkuchlan/$SKIP_PLUGIN
+**File:** \`$SKIP_FILE\`
+
+After your patch is merged to Gerrit, the branch can be deleted from the fork.
 
 Output only the tool call result." \
             2>&1 | tee -a "$LOG_FILE" || log "WARNING: could not post DevStack warning to Jira for $ticket"
