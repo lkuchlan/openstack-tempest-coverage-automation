@@ -258,8 +258,8 @@ done <<< "$(tickets_at_stage IMPLEMENTING)"
 
 # ── STAGE 5.7: VERIFYING → VERIFIED (DevStack verification) ──────────────────
 # Runs the generated tests against a real OpenStack deployment on DevStack.
-# Pass → VERIFIED (triggers Stage 6 fork push)
-# Fail → stays VERIFYING so the next run retries
+# Pass → VERIFIED (skill posts ✅ Jira comment with git review instructions)
+# Fail → VERIFIED (posts ⚠️ + 🚀 Jira comment; advances regardless)
 while IFS= read -r ticket; do
     [ -z "$ticket" ] && continue
     log "Verifying tests on DevStack for: $ticket"
@@ -313,9 +313,7 @@ Output only the tool call result." \
     fi
 done <<< "$(tickets_at_stage VERIFYING)"
 
-update_last_run
-
-# ── STAGE 5.5: Sync GitHub forks with upstream ───────────────────────────────
+# ── STAGE 5.8: Sync GitHub forks with upstream ───────────────────────────────
 # Keep fork master branches current so feature branches are based on recent code.
 log "Syncing GitHub forks with upstream..."
 FORK_CONFIG="$REPO_DIR/skills/orchestrator/config.json"
@@ -385,7 +383,6 @@ print(forks.get('$PLUGIN', ''))
     fi
 
     # Check if branch already pushed (avoid redundant pushes)
-    PLUGIN_NAME="${PLUGIN%-tempest-plugin}"
     if GIT_SSH_COMMAND="ssh -i $SSH_KEY -o StrictHostKeyChecking=accept-new" \
         git -C "$REPO_PATH" ls-remote --exit-code fork-push "$BRANCH" >/dev/null 2>&1; then
         log "$ticket: branch $BRANCH already in fork, skipping"
@@ -406,6 +403,7 @@ print(forks.get('$PLUGIN', ''))
     fi
 done <<< "$(tickets_at_stage VERIFIED)"
 
+update_last_run
 log "=== Pipeline run complete ==="
 
 # ── Auto git-review if enabled ────────────────────────────────────────────────
