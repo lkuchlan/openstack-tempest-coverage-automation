@@ -103,9 +103,17 @@ log "Claude Code version: $(claude --version 2>/dev/null || echo 'unknown')"
 # ── Pull latest skills ────────────────────────────────────────────────────────
 
 log "Pulling latest skills from origin/main..."
+PULL_BEFORE=$(git -C "$REPO_DIR" rev-parse HEAD 2>/dev/null || true)
 git -C "$REPO_DIR" pull --ff-only origin main 2>&1 | tee -a "$LOG_FILE" || {
     log "WARNING: git pull failed (local changes?), continuing"
 }
+PULL_AFTER=$(git -C "$REPO_DIR" rev-parse HEAD 2>/dev/null || true)
+# Re-exec with the new script if pull changed it — avoids bash running a stale
+# in-memory buffer of the old version for the remainder of the run.
+if [ -n "$PULL_BEFORE" ] && [ "$PULL_BEFORE" != "$PULL_AFTER" ]; then
+    log "Script updated (${PULL_BEFORE:0:8} → ${PULL_AFTER:0:8}) — re-executing..."
+    exec bash --login "$0" "$@"
+fi
 
 cd "$REPO_DIR"
 state_init
@@ -183,15 +191,52 @@ done <<< "$(tickets_at_stage APPROVED)"
 # compliance beyond pep8/py3: base classes, waiters, cleanup, service clients,
 # test independence, decorators.
 # Pass → VERIFYING   Fail → CODE_REVIEW_FAILED (terminal)
+PLUGINS_WORKSPACE="${HOME}/tempest-workspace"
 while IFS= read -r ticket; do
     [ -z "$ticket" ] && continue
     log "Code-reviewing tests for: $ticket"
+
+    # Resolve repo path and branch — prefer state, fall back to convention
+    IMPL_REPO=$(jq -r --arg t "$ticket" \
+        '.tickets[$t].implementation_details.repository_path // empty' "$STATE_FILE" 2>/dev/null || true)
+    IMPL_BRANCH=$(jq -r --arg t "$ticket" \
+        '.tickets[$t].implementation_details.branch // empty' "$STATE_FILE" 2>/dev/null || true)
+    [ -z "$IMPL_BRANCH" ] && IMPL_BRANCH="tempest-coverage-$ticket"
+
+    if [ -z "$IMPL_REPO" ]; then
+        IMPL_REPO=$(find "$PLUGINS_WORKSPACE" -maxdepth 2 -name .git | while IFS= read -r dotgit; do
+            r=$(dirname "$dotgit")
+            git -C "$r" branch 2>/dev/null | grep -q "$IMPL_BRANCH" && echo "$r" && break
+        done || true)
+    fi
+
+    if [ -z "$IMPL_REPO" ] || [ ! -d "$IMPL_REPO" ]; then
+        log "WARNING: $ticket — cannot locate implementation repo, advancing to VERIFYING"
+        advance_ticket "$ticket" "VERIFYING"
+        continue
+    fi
+
+    TEST_FILES=$(git -C "$IMPL_REPO" diff "origin/master...$IMPL_BRANCH" --name-only 2>/dev/null \
+        | grep '\.py$' || true)
+
+    if [ -z "$TEST_FILES" ]; then
+        log "WARNING: $ticket — no Python files found in $IMPL_BRANCH, advancing to VERIFYING"
+        advance_ticket "$ticket" "VERIFYING"
+        continue
+    fi
+
+    # Build full paths for Claude
+    FULL_PATHS=$(echo "$TEST_FILES" | sed "s|^|$IMPL_REPO/|")
+
     REVIEW_OUTPUT=$(claude --permission-mode bypassPermissions -p "
 You are reviewing Tempest test code for standards compliance.
 
-Read ~/.claude/orchestrator-state/pipeline-state.json.
-Get the test file(s) from .tickets[\"$ticket\"].implementation_details.test_files.
-Read each test file and check for ALL of the following violations:
+Repository: $IMPL_REPO
+Branch: $IMPL_BRANCH
+Files to review (one per line):
+$FULL_PATHS
+
+Read each file listed above and check for ALL of the following violations:
 1. Class does NOT inherit from a proper Tempest base class (BaseVolumeTest, BaseSharesTest, etc.)
 2. time.sleep() is used instead of waiters.wait_for_*
 3. Resources created without addCleanup() or a helper that handles cleanup
@@ -201,7 +246,8 @@ Read each test file and check for ALL of the following violations:
 
 If ALL checks pass output exactly: CODE_REVIEW_PASSED
 If any violation found output: CODE_REVIEW_FAILED: <brief list of violations>
-Output nothing else." 2>&1 | tee -a "$LOG_FILE")
+Output nothing else." 2>&1 | tee -a "$LOG_FILE") || true
+
     if echo "$REVIEW_OUTPUT" | grep -q "CODE_REVIEW_PASSED"; then
         advance_ticket "$ticket" "VERIFYING"
     else
