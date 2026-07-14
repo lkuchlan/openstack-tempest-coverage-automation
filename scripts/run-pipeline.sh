@@ -3,7 +3,7 @@
 # Pulls the latest skills and runs the pipeline.
 #
 # Stage machine (bash-level, not AI-level):
-#   Discovery → DISCOVERED → ANALYZED → AWAITING_APPROVAL → (approved) → IMPLEMENTING → …
+#   Discovery → DISCOVERED → ANALYZED → AWAITING_APPROVAL → APPROVED → IMPLEMENTING → VERIFYING → VERIFIED → (fork push) → (manual git review)
 #
 # Each stage calls one claude skill session. Bash manages state transitions.
 set -euo pipefail
@@ -177,6 +177,54 @@ while IFS= read -r ticket; do
         log "WARNING: Implementation failed for $ticket"
     fi
 done <<< "$(tickets_at_stage APPROVED)"
+
+# ── STAGE 5.6: IMPLEMENTING → VERIFYING (automated code review) ──────────────
+# A Claude agent reads each generated test file and checks Tempest standard
+# compliance beyond pep8/py3: base classes, waiters, cleanup, service clients,
+# test independence, decorators.
+# Pass → VERIFYING   Fail → CODE_REVIEW_FAILED (terminal)
+while IFS= read -r ticket; do
+    [ -z "$ticket" ] && continue
+    log "Code-reviewing tests for: $ticket"
+    REVIEW_OUTPUT=$(claude --permission-mode bypassPermissions -p "
+You are reviewing Tempest test code for standards compliance.
+
+Read ~/.claude/orchestrator-state/pipeline-state.json.
+Get the test file(s) from .tickets[\"$ticket\"].implementation_details.test_files.
+Read each test file and check for ALL of the following violations:
+1. Class does NOT inherit from a proper Tempest base class (BaseVolumeTest, BaseSharesTest, etc.)
+2. time.sleep() is used instead of waiters.wait_for_*
+3. Resources created without addCleanup() or a helper that handles cleanup
+4. Raw HTTP (requests / urllib) used instead of service clients (self.*_client)
+5. Shared state between test methods (class-level mutable resources)
+6. Missing @decorators.idempotent_id or @decorators.attr decorators
+
+If ALL checks pass output exactly: CODE_REVIEW_PASSED
+If any violation found output: CODE_REVIEW_FAILED: <brief list of violations>
+Output nothing else." 2>&1 | tee -a "$LOG_FILE")
+    if echo "$REVIEW_OUTPUT" | grep -q "CODE_REVIEW_PASSED"; then
+        advance_ticket "$ticket" "VERIFYING"
+    else
+        log "WARNING: Code review failed for $ticket"
+        advance_ticket "$ticket" "CODE_REVIEW_FAILED"
+    fi
+done <<< "$(tickets_at_stage IMPLEMENTING)"
+
+# ── STAGE 5.7: VERIFYING → VERIFIED (DevStack verification) ──────────────────
+# Runs the generated tests against a real OpenStack deployment on DevStack.
+# Pass → VERIFIED (triggers Stage 6 fork push)
+# Fail → stays VERIFYING so the next run retries
+while IFS= read -r ticket; do
+    [ -z "$ticket" ] && continue
+    log "Verifying tests on DevStack for: $ticket"
+    if claude --permission-mode bypassPermissions \
+        -p "This is an automated pipeline run. Proceed autonomously — do NOT ask for confirmation. /verify-tempest-devstack $ticket" \
+        2>&1 | tee -a "$LOG_FILE"; then
+        advance_ticket "$ticket" "VERIFIED"
+    else
+        log "WARNING: DevStack verification failed for $ticket — will retry next run"
+    fi
+done <<< "$(tickets_at_stage VERIFYING)"
 
 update_last_run
 
