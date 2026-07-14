@@ -299,6 +299,7 @@ Spawn **Agent (Explore)** to discover patterns for implementation:
 4. **Waiter methods** available
 5. **Cleanup patterns** used
 6. **Common fixtures** available
+7. **Helper method implementations** — read the body of any helper you plan to call (e.g. `create_volume`, `boot_instance_from_resource`, `create_volume_snapshot`) to learn exactly what it already does (waiters it calls, cleanup it registers, assertions it makes)
 
 **Search Patterns:**
 ```bash
@@ -316,6 +317,10 @@ grep -r "test_{similar_operation}" {repo}/tests/
 
 # Find cleanup patterns
 grep -r "addCleanup" {repo}/tests/
+
+# Find helper method bodies (read, don't just grep)
+grep -rn "def create_volume\|def boot_instance\|def create_snapshot" {repo}/tests/api/base.py
+# Then Read each matched file to inspect the implementation
 ```
 
 **CRITICAL RULES:**
@@ -324,6 +329,7 @@ grep -r "addCleanup" {repo}/tests/
 - **Identify base classes per service** from existing tests
 - **Use exact same client patterns** as existing tests
 - **Copy cleanup patterns exactly**
+- **Read helper method bodies before using them** — if you plan to call `self.create_volume()`, `self.boot_instance_from_resource()`, `self.create_volume_snapshot()`, or any other base-class helper, Read its implementation first. Many helpers already call waiters internally and register cleanup. Adding an explicit waiter or `addCleanup` after such a call is redundant and wrong.
 - **Search for an existing test file before creating a new one** - look for files that cover the same service area or API. Only create a new file if no suitable existing file is found.
 - **Search for an existing test class before creating a new one** - within the chosen file, check if an existing class covers the same feature area. Add the test method there rather than creating a new class. A new class is only warranted when the base class, credential type, or skip conditions differ meaningfully from all existing classes.
 - **File-name purpose-qualifier check** — If the candidate file has a purpose-qualifier suffix, only place the new test there if it genuinely belongs to that category: `_concurrency` files contain tests that run parallel operations (e.g., `run_concurrent_tasks()`); `_rbac` files contain role-based access control tests; `_admin` files require admin credentials; `_negative` files test error paths. If the new test does not fit the qualifier, find or create a different file.
@@ -407,22 +413,40 @@ Implement tests following **strict Tempest standards**.
    response = requests.post(url, json=data)
    ```
 
-3. **Use Waiters (NO sleep!)**
+3. **Use Waiters (NO sleep!) — but never duplicate what a helper already does**
    ```python
-   # CORRECT
+   # CORRECT — direct client call needs an explicit waiter
+   volume = self.volumes_client.create_volume(size=1)
    waiters.wait_for_volume_resource_status(
-       self.volumes_client, volume_id, 'available'
+       self.volumes_client, volume['id'], 'available'
    )
-   
-   # WRONG
+
+   # CORRECT — helper already waits internally; no extra waiter needed
+   volume = self.create_volume()  # waiter is inside create_volume()
+
+   # WRONG — redundant waiter after a helper that already waits
+   volume = self.create_volume()
+   waiters.wait_for_volume_resource_status(...)  # duplicate!
+
+   # WRONG — sleep instead of waiter
    time.sleep(10)
    ```
+   **Rule:** Before adding a waiter after any `self.{helper}()` call, Read the helper's implementation and confirm it does NOT already call that waiter.
 
-4. **Proper Cleanup**
+4. **Proper Cleanup — but never duplicate what a helper already registers**
    ```python
-   volume = self.create_volume()  # Or volumes_client.create_volume()
-   self.addCleanup(self.delete_volume, volume['id'])
+   # CORRECT — direct client call needs explicit cleanup
+   volume = self.volumes_client.create_volume(size=1)
+   self.addCleanup(self.volumes_client.delete_volume, volume['id'])
+
+   # CORRECT — helper already registers cleanup; no addCleanup needed
+   volume = self.create_volume()  # cleanup is inside create_volume()
+
+   # WRONG — redundant cleanup after a helper that already registers it
+   volume = self.create_volume()
+   self.addCleanup(self.volumes_client.delete_volume, volume['id'])  # duplicate!
    ```
+   **Rule:** Before adding `addCleanup` after any `self.{helper}()` call, Read the helper's implementation and confirm it does NOT already register cleanup.
 
 5. **Test Independence**
    - Each test must run independently
