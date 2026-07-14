@@ -23,23 +23,23 @@ Manage Jira tickets through a state machine — Discovery → Analysis → Post 
 ```
 DISCOVERED
     ↓  /jira-coverage-analysis
-ANALYSIS_COMPLETE
+ANALYZED
     ↓  /post-test-plan
-PLAN_POSTED
-    ↓  (approval-monitor polls every 4h)
 AWAITING_APPROVAL
-    ↓  stakeholder approves
+    ↓  (approval-monitor polls every 4h)
 APPROVED
     ↓  /implement-tempest-tests
-IMPLEMENTED
-    ↓  /verify-tempest-devstack
+IMPLEMENTING
+    ↓  automated code review (Stage 5.6)
+VERIFYING
+    ↓  /verify-tempest-devstack (always advances regardless of outcome)
 VERIFIED
     ↓  git review (manual), then --submitted
 SUBMITTED  ← terminal
 
-REJECTED   ← terminal (approval denied)
-TIMED_OUT  ← terminal (no response in 7 days)
-ERROR      ← recoverable via --retry
+REJECTED           ← terminal (approval denied)
+TIMED_OUT          ← terminal (no response in 7 days)
+CODE_REVIEW_FAILED ← terminal (Tempest standards violations)
 ```
 
 **discussion_flagged:** A sub-state of AWAITING_APPROVAL. Set when the approval-monitor detects a neutral stakeholder comment (neither approval nor rejection). The ticket stays at AWAITING_APPROVAL; user is notified. Re-running `/post-test-plan` after addressing feedback uses the revised template automatically.

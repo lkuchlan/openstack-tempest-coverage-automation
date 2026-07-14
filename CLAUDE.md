@@ -52,7 +52,7 @@ Approval monitor and manual recovery tool for the pipeline. In automated runs th
 /tempest-coverage-orchestrator TICKET-ID --submitted <gerrit_url>  # Mark as submitted after git review
 ```
 
-**Pipeline terminal stages:** SUBMITTED (after `--submitted`), REJECTED, TIMED_OUT, CODE_REVIEW_FAILED, VERIFICATION_FAILED
+**Pipeline terminal stages:** SUBMITTED (after `--submitted`), REJECTED, TIMED_OUT, CODE_REVIEW_FAILED
 
 **discussion_flagged:** When the approval-monitor detects a neutral stakeholder comment (neither approval nor rejection), the ticket stays at AWAITING_APPROVAL and is flagged as NEEDS DISCUSSION. Re-running `/post-test-plan` after addressing feedback uses the revised template automatically.
 

@@ -66,6 +66,22 @@ run-pipeline.sh  ← bash-level stage router
     │
     └─ Stage 5: APPROVED → IMPLEMENTING
          claude -p /implement-tempest-tests TICKET → jq advances state
+    │
+    ├─ Stage 5.6: IMPLEMENTING → VERIFYING / CODE_REVIEW_FAILED (code review)
+    │    Claude reads test files on branch, checks 6 Tempest rules
+    │    → CODE_REVIEW_PASSED: advance VERIFYING
+    │    → CODE_REVIEW_FAILED: terminal (Tempest standards violations)
+    │
+    ├─ Stage 5.7: VERIFYING → VERIFIED (DevStack verification)
+    │    claude -p /verify-tempest-devstack TICKET
+    │    Pass → VERIFIED + posts ✅ Jira comment with git review instructions
+    │    Fail → VERIFIED + posts ⚠️+🚀 Jira comment (always advances)
+    │
+    ├─ Stage 5.8: Fork sync (keep fork master branches current)
+    │    git push fork-push origin/HEAD:refs/heads/master
+    │
+    └─ Stage 6: VERIFIED branches → push to GitHub fork
+         git push fork-push BRANCH
 ```
 
 Key properties:
@@ -231,14 +247,9 @@ Implementation Output (test files on branch)
     +──── PASSED → VERIFIED (update Jira) → git review (manual)
     |              → /orchestrator TICKET --submitted <url> → SUBMITTED
     |
-    +──── FAILED → Structured feedback
-                        ↓
-               [implement-tempest-tests --fix-context]
-                        ↓
-               [Re-verify with --skip-deploy (once)]
-                        ↓
-                   PASSED → VERIFIED (update Jira) → git review (manual)
-                   FAILED → VERIFICATION_FAILED
+    +──── NOT PASSED → Posts ⚠️ DevStack Verification Skipped + 🚀 Gerrit instructions
+                      Pipeline advances to VERIFIED regardless
+                      (Manual verification recommended before merging)
 ```
 
 ## Configuration Hierarchy
@@ -274,7 +285,7 @@ Skills use Claude Code memory for:
 ```
 post-test-plan posts plan to Jira
     │
-    └── CronCreate(durable=true, cron="0 */4 * * *")
+    └── CronCreate(durable=true, cron="17 */4 * * *")
               │
               │  fires every 4 hours
               ▼

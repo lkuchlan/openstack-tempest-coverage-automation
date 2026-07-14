@@ -135,13 +135,11 @@ User provides ticket ID
          |
     +----+----+
     |         |
- PASSED    FAILED
+ PASSED    NOT PASSED
     |         |
-    |    [Produce structured feedback]
+    |    [Post ⚠️ + 🚀 Jira comment]
     |         |
-    |    [Orchestrator triggers retry]
-    |         |
- VERIFIED  FIX + RE-VERIFY (once)
+ VERIFIED  VERIFIED  (always advances)
 ```
 
 ## Configuration
@@ -202,7 +200,7 @@ When tests fail, the skill produces structured JSON feedback:
 }
 ```
 
-The orchestrator passes this to `implement-tempest-tests` for a targeted fix, then re-verifies once. If tests still fail after retry, the ticket is marked `VERIFICATION_FAILED`.
+If DevStack verification does not pass, the pipeline still advances to VERIFIED, posts a ⚠️ DevStack Verification Skipped comment with 🚀 Gerrit submission instructions, and the engineer is recommended to verify manually before merging.
 
 ## Performance
 
@@ -235,15 +233,18 @@ Use `--skip-deploy` to skip deployment when DevStack is already running (~5-35 m
 
 ## Integration with Pipeline
 
-This skill is Stage 4 in the orchestrator pipeline:
+This skill is Stage 5.7 in the pipeline:
 
 ```
-Stage 1: /jira-coverage-analysis  (analyze gaps)
-Stage 2: /post-test-plan           (share plan with stakeholders)
-Stage 3: Approval monitoring       (wait for stakeholder approval)
-Stage 4: /implement-tempest-tests  (implement tests)
-Stage 5: /verify-tempest-devstack  (verify on DevStack)  <-- THIS SKILL
-Stage 6: Update Jira with results
+Stage 1:   Discovery (JQL → ticket IDs)
+Stage 2:   DISCOVERED → ANALYZED (/jira-coverage-analysis)
+Stage 3:   ANALYZED → AWAITING_APPROVAL (/post-test-plan)
+Stage 4:   AWAITING_APPROVAL → APPROVED (approval monitoring)
+Stage 5:   APPROVED → IMPLEMENTING (/implement-tempest-tests)
+Stage 5.6: IMPLEMENTING → VERIFYING (automated code review)
+Stage 5.7: VERIFYING → VERIFIED (/verify-tempest-devstack)  <-- THIS SKILL
+Stage 5.8: Fork sync (keep fork master current)
+Stage 6:   Push VERIFIED branches to GitHub fork
 ```
 
 ## See Also

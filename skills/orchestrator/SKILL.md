@@ -523,8 +523,7 @@ No further action. Continue to next ticket.
    - If `verification_status == "DEFERRED"`: the VM is locked by another ticket. Keep the ticket at `CODE_REVIEW` stage — do NOT advance, do NOT error. The next orchestrator run will retry automatically.
    - If `verification_status == "DEPLOYMENT_FAILED"`: transition to `ERROR` with `error_type: "deployment_failure"` — do NOT trigger fix+retry loop (this is an infrastructure issue, not a test code issue). Post Jira comment with deployment error details.
    - If `verification_status == "SKIPPED"`: transition to `VERIFICATION_SKIPPED` — the environment cannot be deployed on DevStack (e.g., requires Ceph, multi-node, SR-IOV). Post Jira comment explaining what manual verification is needed.
-   - If `verification_status == "FAILED"` AND `verification_attempt < config.verification.max_retry_cycles + 1`: transition to `FIX_IN_PROGRESS` with `fix_context.source = "devstack_verification"`
-   - If `verification_status == "FAILED"` AND retries exhausted: transition to `VERIFICATION_FAILED`
+   - If `verification_status == "FAILED"` OR DevStack did not pass: transition to `VERIFIED` with `devstack_verification_result = "skipped"` — post ⚠️+🚀 Jira comment with Gerrit submission instructions
 
 **If verification skill fails (crash, SSH error, etc.):**
 - Set stage to `ERROR` with `stage_when_failed: "CODE_REVIEW"` and error details
@@ -742,40 +741,11 @@ No further action. Continue to next ticket.
 7. **Checkpoint:** Write state to disk immediately
 8. **Determine next stage immediately:**
    - If `verification_status == "PASSED"`: transition to `VERIFIED`
-   - If `verification_status == "FAILED"`: transition to `VERIFICATION_FAILED` (max retries exhausted)
+   - If `verification_status == "FAILED"` OR DevStack did not pass: transition to `VERIFIED` with `devstack_verification_result = "skipped"` — post ⚠️+🚀 Jira comment
 
 **If re-implementation or re-verification fails:**
 - Set stage to `ERROR` with `stage_when_failed: "FIX_IN_PROGRESS"` and error details
 - Continue to next ticket
-
----
-
-#### Stage Handler: VERIFYING → VERIFICATION_FAILED
-
-**Condition:** Ticket is at stage `VERIFYING` with `verification_result.status == "FAILED"` AND `verification_attempt >= config.verification.max_retry_cycles + 1`
-
-**Actions:**
-1. Update ticket state:
-   ```json
-   {
-     "stage": "VERIFICATION_FAILED",
-     "entered_stage_at": "<current ISO-8601 timestamp>",
-     "failure_summary": "{failed_count} tests failed after {attempt_count} attempt(s)",
-     "final_feedback": {...},
-     "history": [..., {"stage": "VERIFICATION_FAILED", "at": "<timestamp>"}]
-   }
-   ```
-2. **Update Jira** (if MCP available):
-   - Post a comment with failure details:
-     ```
-     Use mcp__mcp-atlassian__add_comment
-     Body: "❌ Verification failed after {retry_count} retry(s).
-     Failed tests: {failed_test_list}
-     Branch: {branch_name}
-     Manual investigation required."
-     ```
-   - Add label: `automation-verification-failed`
-3. **Checkpoint:** Write state to disk immediately
 
 ---
 
@@ -904,7 +874,7 @@ Check whether `REPO_NAME` contains the string `tempest` (case-insensitive).
 
 ---
 
-#### Terminal Stages: VERIFIED / SUBMITTED / CODE_REVIEW_FAILED / VERIFICATION_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
+#### Terminal Stages: VERIFIED / SUBMITTED / CODE_REVIEW_FAILED / VERIFICATION_SKIPPED / REJECTED / TIMED_OUT / ERROR
 
 **Condition:** Ticket is at any terminal stage
 
@@ -920,10 +890,6 @@ Check whether `REPO_NAME` contains the string `tempest` (case-insensitive).
   - Reset stage to `IMPLEMENTING`
   - Clear code review failure fields
   - Re-process through implementation and code review
-- If `--retry` flag was passed and stage is VERIFICATION_FAILED:
-  - Reset stage to `IMPLEMENTING`
-  - Clear failure fields
-  - Re-process through implementation, code review, and verification
 
 ---
 
@@ -964,7 +930,7 @@ Log format per ticket:
 [2026-05-07T08:17:00Z] OSPRH-22616: APPROVED → IMPLEMENTING (3 tests implemented)
 [2026-05-07T08:17:00Z] OSPRH-22617: IMPLEMENTING → VERIFIED (3/3 tests passed on DevStack)
 [2026-05-07T08:17:00Z] OSPRH-22618: VERIFYING → FIX_IN_PROGRESS (1 test failed, retrying)
-[2026-05-07T08:17:00Z] OSPRH-22619: FIX_IN_PROGRESS → VERIFICATION_FAILED (retry exhausted)
+[2026-05-07T08:17:00Z] OSPRH-22619: VERIFYING → VERIFIED (DevStack skipped — ⚠️ Jira comment posted)
 [2026-05-07T08:17:00Z] OSPRH-22620: VERIFYING → VERIFICATION_SKIPPED (requires multi-node)
 [2026-05-07T08:17:00Z] OSPRH-22621: IMPLEMENTING → IMPLEMENTING (deferred, VM locked by OSPRH-22617)
 ```
@@ -1014,7 +980,7 @@ Log format per ticket:
 
 **ERROR handling in the summary:**
 
-For every ticket at stage `ERROR` or any terminal failure stage (`CODE_REVIEW_FAILED`, `VERIFICATION_FAILED`):
+For every ticket at stage `ERROR` or any terminal failure stage (`CODE_REVIEW_FAILED`):
 
 1. **Highlight clearly in the summary table** — mark with `❌` prefix
 2. **Post a Jira comment** (if MCP available):

@@ -114,7 +114,7 @@ DO NOT include in-development tests (local branches) - they mislead stakeholders
 
 **Action:** Comment **"Approved"** below to implement these tests
 
-Alternative: React with 👍 to this comment (if your Jira supports reactions)
+Alternative: React with 👍 to this comment
 
 **Implementation:** `{file_location}`
 ```
@@ -358,7 +358,7 @@ Alternative: React with 👍 to this comment (if your Jira supports reactions)
      cron:      "17 */4 * * *"
      durable:   true
      recurring: true
-     prompt:    "Read ~/.claude/orchestrator-state/pipeline-state.json. Find all tickets with stage \"AWAITING_APPROVAL\". For each ticket: (1) If current time > approval_deadline, set stage to \"TIMED_OUT\" with timed_out_at timestamp. (2) Otherwise fetch Jira comments via jira_get_issue (comment_limit=50). Only consider comments posted AFTER plan_posted_at by non-automation authors (skip authors whose name contains \"Automation\"). (3) If any comment contains rejection keywords (\"rejected\", \"not approved\", \"decline\") — set stage to \"REJECTED\", record rejected_by (author displayName) and rejection_comment (first 200 chars). (4) Else if any comment contains approval keywords (\"Approved\", \"LGTM\", \"looks good\") — set stage to \"APPROVED\", record approved_by (author displayName) and approved_at. (5) Else if any human comment exists that matches neither keyword set — keep stage \"AWAITING_APPROVAL\" but set discussion_flagged: {comment_by, comment_at, comment_preview (first 150 chars)}. (6) Otherwise increment approval_checks and update last_check. Write the full updated state back to pipeline-state.json. Then print a visible summary: \"=== Approval Monitor ===\" followed by one line per ticket showing its outcome (APPROVED/REJECTED/TIMED_OUT/NEEDS DISCUSSION/still pending with check count and deadline)."
+     prompt:    "Read ~/.claude/orchestrator-state/pipeline-state.json. Find all tickets with stage \"AWAITING_APPROVAL\". For each ticket: (1) If current time > approval_deadline, set stage to \"TIMED_OUT\" with timed_out_at timestamp. (2) Otherwise fetch Jira comments via jira_get_issue (comment_limit=50). Only consider comments posted AFTER plan_posted_at by non-automation authors (skip authors whose name contains \"Automation\"). (2b) Check for 👍 reaction: find the comment containing \"Test Automation Plan\" and get its id as plan_comment_id. Run: source ~/.config/tempest-pipeline/.env && REACTION_RESULT=$(curl -s -u \"${JIRA_USERNAME}:${JIRA_API_TOKEN}\" \"${JIRA_URL}/rest/api/3/issue/${ticket}/comment/${plan_comment_id}\" | python3 -c \"import json,sys; data=json.load(sys.stdin); approved=any(r.get('emoji')=='👍' and r.get('count',0)>0 for r in data.get('reactions',{}).get('reactionSummary',[])) or data.get('likes',{}).get('count',0)>0; print('approved' if approved else 'none')\") — if REACTION_RESULT is \"approved\", set stage to APPROVED with approved_by=\"👍 reaction on plan comment\" and skip steps (3)-(4). (3) If any comment contains rejection keywords (\"rejected\", \"not approved\", \"decline\") — set stage to \"REJECTED\", record rejected_by (author displayName) and rejection_comment (first 200 chars). (4) Else if any comment contains approval keywords (\"approved\", \"Approved\", \"LGTM\", \"looks good\") — set stage to \"APPROVED\", record approved_by (author displayName) and approved_at. (5) Else if any human comment exists that matches neither keyword set — keep stage \"AWAITING_APPROVAL\" but set discussion_flagged: {comment_by, comment_at, comment_preview (first 150 chars)}. (6) Otherwise increment approval_checks and update last_check. Write the full updated state back to pipeline-state.json. Then print a visible summary: \"=== Approval Monitor ===\" followed by one line per ticket showing its outcome (APPROVED/REJECTED/TIMED_OUT/NEEDS DISCUSSION/still pending with check count and deadline)."
      reason:    "Polling Jira for test plan approval on pending tickets"
    ```
 
@@ -466,7 +466,7 @@ Skip user-facing report and return structured JSON only:
 ✅ Posted to correct ticket (or shown for manual posting)
 ✅ User receives confirmation
 ✅ Stakeholders can see plan in Jira
-✅ Clear approval instructions (hybrid: text comment OR emoji)
+✅ Clear approval instructions (text comment OR 👍 reaction)
 
 ---
 
@@ -481,7 +481,7 @@ Skip user-facing report and return structured JSON only:
 - Provide fallback if Jira write not available
 - Save metadata for tracking
 - Keep format clean (no hours column, no redundant ticket summary)
-- Include hybrid approval options (text comment + emoji)
+- Include both approval options (text comment + 👍 reaction on plan comment)
 
 ### ❌ DON'T:
 - Don't create analysis (that's separate skill)
@@ -552,11 +552,8 @@ When `/implement-tempest-tests` adds `--check-approval` flag:
 3. Verify comment is AFTER test plan posted
 4. If found → APPROVED, proceed
 
-**Phase 2 (Emoji Reactions - Future):**
-1. Find test plan comment ID
-2. Check for 👍 reactions
-3. If reaction exists → APPROVED
-4. Fallback to text detection
+**Phase 2 (Emoji Reactions):**
+Emoji reactions (👍 on the plan comment) are detected via the Jira REST API alongside text comments. The approval-monitor checks for 👍 reactions on the plan comment after the text-comment scan.
 
 ---
 
