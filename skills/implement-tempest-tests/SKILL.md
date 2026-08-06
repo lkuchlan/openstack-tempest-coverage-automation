@@ -50,15 +50,72 @@ User: /implement-tempest-tests RHEL-12345
 - Use analysis findings
 - Skip redundant analysis
 
-**Option B: From Jira Ticket (Lightweight Analysis)**
+**Option B: From Jira Ticket (with Bug Fix Analysis)**
 ```bash
 User: /implement-tempest-tests RHEL-12345
 ```
-- If no recent analysis exists
-- Fetch Jira ticket via MCP (if available)
-- Do **quick** analysis (what's needed for implementation)
-- Identify service, feature, gaps
-- Proceed to implementation
+
+**Sub-steps:**
+
+1. **Fetch Jira ticket via MCP:**
+   ```
+   jira_get_issue(issue_key=TICKET_ID, fields="*all")
+   ```
+   Extract: `summary`, `description`, `components`, `customfield_10530` (Gerrit Link).
+
+2. **Extract Gerrit Link (`customfield_10530`):**
+   - If the field is populated → proceed to sub-step 3.
+   - If empty → also scan the ticket `description` and any comments for URLs
+     matching `review.opendev.org/c/*/+/*` or `review.opendev.org/c/*`.
+   - If no Gerrit link found anywhere → fall back to ticket-only analysis
+     (describe this as a limitation in the output).
+
+3. **Parse the Gerrit change number from the URL:**
+   - URL formats:
+     - `https://review.opendev.org/c/{project}/+/{CHANGE_ID}`
+     - `https://review.opendev.org/{CHANGE_ID}`
+   - Extract the numeric `CHANGE_ID`.
+
+4. **Fetch Gerrit change metadata + commit message:**
+   ```bash
+   curl -sf "https://review.opendev.org/changes/{CHANGE_ID}?o=CURRENT_REVISION&o=CURRENT_COMMIT&o=CURRENT_FILES"
+   ```
+   Strip the `)]}'` XSS prefix before parsing JSON.
+   Extract:
+   - `subject` — one-line summary of the fix
+   - `revisions[*].commit.message` — full commit message (explains the bug and fix)
+   - `revisions[*].files` — map of changed filenames
+
+5. **Fetch diffs for the changed source files (skip test files):**
+   For each changed file that is NOT a test file (i.e., not under `tests/`
+   and not a `releasenotes/` file):
+   ```bash
+   ENCODED=$(python3 -c "import urllib.parse; print(urllib.parse.quote('{FILENAME}', safe=''))")
+   curl -sf "https://review.opendev.org/changes/{CHANGE_ID}/revisions/current/files/${ENCODED}/diff"
+   ```
+   Strip `)]}'` prefix. Extract `content` array (unified diff hunks).
+   Limit to the 3–5 most significant source files if there are many.
+
+6. **Analyze the fix to derive test requirements:**
+   From the commit message and diffs, answer:
+   - **What was the bug?** (e.g., temp volume had `available` status → could be deleted)
+   - **What did the fix change?** (e.g., status now set to `backing-up` during backup)
+   - **What API behavior changed?** (e.g., DELETE now rejected for `backing-up` volumes)
+   - **What should a Tempest test verify?** (e.g., DELETE on `backing-up` volume → 400)
+   - **Is the test positive or negative?** (error-path → negative → `_negative` file)
+   - **Which service client and status values are involved?**
+
+7. **Produce structured test requirements from the analysis:**
+   Use the above answers to construct an explicit requirements list that drives
+   the rest of the skill (STEP 3 onward):
+   ```
+   Service: <from Jira components>
+   Bug: <Gerrit subject + Launchpad/BZ reference from commit message>
+   Fix summary: <what the diff changes, in plain English>
+   Tests needed:
+     - <test description derived from the diff analysis>
+   Test type: negative / positive / RBAC
+   ```
 
 **Option C: From Manual Requirements**
 ```bash
