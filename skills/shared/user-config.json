@@ -1,0 +1,27 @@
+{
+  "$description": "USER SETTINGS — edit these to match your environment. Copy your changes into config.json.",
+
+  "default_repo_paths": {
+    "tempest": [
+      "~/tempest-workspace/tempest"
+    ],
+    "plugins": {
+      "cinder-tempest-plugin": ["~/tempest-workspace/cinder-tempest-plugin"],
+      "manila-tempest-plugin": ["~/tempest-workspace/manila-tempest-plugin"],
+      "glance-tempest-plugin": ["~/tempest-workspace/glance-tempest-plugin"],
+      "barbican-tempest-plugin": ["~/tempest-workspace/barbican-tempest-plugin"],
+      "keystone-tempest-plugin": ["~/tempest-workspace/keystone-tempest-plugin"],
+      "neutron-tempest-plugin": ["~/tempest-workspace/neutron-tempest-plugin"]
+    }
+  },
+
+  "jira_integration": {
+    "enabled": true,
+    "use_mcp_if_available": true,
+    "default_jira_url": "env:JIRA_URL"
+  },
+
+  "git_workflow": {
+    "default_base_branch": "main"
+  }
+}

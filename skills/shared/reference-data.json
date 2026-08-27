@@ -1,0 +1,88 @@
+{
+  "$description": "STABLE REFERENCE DATA — do not edit unless OpenStack project conventions change.",
+
+  "service_to_plugin_mapping": {
+    "cinder": "cinder-tempest-plugin",
+    "manila": "manila-tempest-plugin",
+    "glance": "glance-tempest-plugin",
+    "barbican": "barbican-tempest-plugin",
+    "keystone": "keystone-tempest-plugin",
+    "nova": "tempest",
+    "neutron": "neutron-tempest-plugin",
+    "swift": "tempest"
+  },
+
+  "tox_environments": {
+    "lint": "pep8",
+    "unit_tests": "py3",
+    "integration": "tempest",
+    "coverage": "cover",
+    "compliance": "compliance"
+  },
+
+  "test_attributes": {
+    "types": ["smoke", "slow", "api", "scenario", "rbac", "negative", "gate"]
+  },
+
+  "base_class_patterns": {
+    "cinder": ["BaseVolumeTest", "BaseVolumeAdminTest", "BaseBackupsTest", "BaseSnapshotsTest"],
+    "manila": ["BaseSharesTest", "BaseSharesAdminTest", "BaseSharesRbacTest"],
+    "glance": ["BaseImageTest", "BaseImageAdminTest"],
+    "generic": ["BaseTestCase", "BaseV2ComputeTest"]
+  },
+
+  "client_patterns": {
+    "cinder": ["volumes_client", "volumes_v3_client", "backups_client", "snapshots_client"],
+    "manila": ["shares_client", "shares_v2_client"],
+    "glance": ["image_client", "image_client_v2"]
+  },
+
+  "waiter_patterns": {
+    "examples": [
+      "waiters.wait_for_volume_resource_status",
+      "waiters.wait_for_volume_deletion",
+      "waiters.wait_for_share_status",
+      "waiters.wait_for_image_status"
+    ]
+  },
+
+  "jira_integration": {
+    "ticket_id_patterns": ["RHEL-\\d+", "OSPRH-\\d+", "OSASINFRA-\\d+", "[A-Z]+-\\d+"],
+    "fields_to_extract": ["summary", "description", "acceptance_criteria", "components", "labels", "status", "assignee", "comments"],
+    "ticket_validation": {
+      "status_validation": {
+        "invalid_statuses": ["Closed", "Done", "Resolved", "Won't Fix", "Won't Do", "Rejected", "Obsolete", "Cancelled"]
+      },
+      "automation_relevance": {
+        "required_labels": ["automation", "test-automation", "tempest", "qa-automation", "test-coverage"],
+        "required_issue_types": ["Test", "Testing", "Test Coverage", "QE Task"],
+        "required_keywords": ["tempest", "test coverage", "test automation", "rbac test", "scenario test", "api test"]
+      }
+    },
+    "post_test_plan": {
+      "approval_keywords": ["approved", "LGTM", "looks good", "Approved"],
+      "duplicate_detection": {
+        "comment_markers": ["🤖 Test Automation Plan", "Test Automation Plan", "## 🤖 Test Automation Plan"]
+      }
+    }
+  },
+
+  "git_workflow": {
+    "branch_prefix": "tempest-coverage-",
+    "commit_message_format": "Add Tempest coverage for {feature}\n\nImplements test coverage for {ticket_id}\n{test_list}\n\nCloses-Bug: #{ticket_id}\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+    "no_push": true,
+    "no_submit": true
+  },
+
+  "validation_settings": {
+    "run_pep8": true,
+    "run_unit_tests": true,
+    "timeout_seconds": 300
+  },
+
+  "devstack_integration": {
+    "tempest_repo": "https://opendev.org/openstack/tempest.git",
+    "plugin_base_url": "https://opendev.org/openstack/",
+    "tempest_config_tool": "discover-tempest-config"
+  }
+}

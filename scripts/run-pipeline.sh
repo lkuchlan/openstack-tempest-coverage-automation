@@ -16,8 +16,19 @@ LOG_DIR="${HOME}/.claude/orchestrator-state/logs"
 LOG_FILE="${LOG_DIR}/$(date +%Y-%m-%d).log"
 STATE_FILE="${HOME}/.claude/orchestrator-state/pipeline-state.json"
 
+VALIDATE_SCRIPT="${REPO_DIR}/scripts/validate-artifact.sh"
+
 mkdir -p "$LOG_DIR"
 mkdir -p "$(dirname "$STATE_FILE")"
+
+# Validate a stage artifact file. Returns 0 if valid, 1 if missing/invalid.
+validate_artifact() {
+    local ticket="$1" stage="$2"
+    if [ -x "$VALIDATE_SCRIPT" ]; then
+        "$VALIDATE_SCRIPT" "$ticket" "$stage" 2>&1 | tee -a "$LOG_FILE" || return 1
+    fi
+    return 0
+}
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
@@ -142,10 +153,10 @@ while IFS= read -r ticket; do
     log "Analyzing: $ticket"
     if claude --permission-mode bypassPermissions \
         -p "This is an automated pipeline run. Proceed autonomously — do NOT ask for confirmation. /jira-coverage-analysis $ticket" \
-        2>&1 | tee -a "$LOG_FILE"; then
+        2>&1 | tee -a "$LOG_FILE" && validate_artifact "$ticket" "analysis"; then
         advance_ticket "$ticket" "ANALYZED"
     else
-        log "WARNING: Analysis failed for $ticket, leaving at DISCOVERED"
+        log "WARNING: Analysis failed for $ticket (or artifact missing), leaving at DISCOVERED"
     fi
 done <<< "$(tickets_at_stage DISCOVERED)"
 
@@ -155,10 +166,10 @@ while IFS= read -r ticket; do
     log "Posting test plan for: $ticket"
     if claude --permission-mode bypassPermissions \
         -p "This is an automated pipeline run. Proceed autonomously — do NOT ask for confirmation. /post-test-plan $ticket" \
-        2>&1 | tee -a "$LOG_FILE"; then
+        2>&1 | tee -a "$LOG_FILE" && validate_artifact "$ticket" "plan"; then
         advance_ticket "$ticket" "AWAITING_APPROVAL"
     else
-        log "WARNING: Plan posting failed for $ticket, leaving at ANALYZED"
+        log "WARNING: Plan posting failed for $ticket (or artifact missing), leaving at ANALYZED"
     fi
 done <<< "$(tickets_at_stage ANALYZED)"
 
@@ -179,10 +190,10 @@ while IFS= read -r ticket; do
     log "Implementing tests for: $ticket"
     if claude --permission-mode bypassPermissions \
         -p "This is an automated pipeline run. Proceed autonomously — do NOT ask for confirmation. /implement-tempest-tests $ticket" \
-        2>&1 | tee -a "$LOG_FILE"; then
+        2>&1 | tee -a "$LOG_FILE" && validate_artifact "$ticket" "implementation"; then
         advance_ticket "$ticket" "IMPLEMENTING"
     else
-        log "WARNING: Implementation failed for $ticket"
+        log "WARNING: Implementation failed for $ticket (or artifact missing)"
     fi
 done <<< "$(tickets_at_stage APPROVED)"
 
@@ -266,7 +277,13 @@ while IFS= read -r ticket; do
     VERIFY_OUTPUT=$(claude --permission-mode bypassPermissions \
         -p "This is an automated pipeline run. Proceed autonomously — do NOT ask for confirmation. /verify-tempest-devstack $ticket" \
         2>&1 | tee -a "$LOG_FILE") || true
-    if echo "$VERIFY_OUTPUT" | grep -q "Overall Status: PASSED"; then
+    # Prefer artifact file over stdout parsing for verification status
+    ARTIFACT_STATUS=""
+    ARTIFACT_FILE="${HOME}/.claude/orchestrator-state/${ticket}/verification.json"
+    if [ -f "$ARTIFACT_FILE" ]; then
+        ARTIFACT_STATUS=$(python3 -c "import json,sys; d=json.load(open('$ARTIFACT_FILE')); print(d.get('verification_status',''))" 2>/dev/null || true)
+    fi
+    if [ "$ARTIFACT_STATUS" = "PASSED" ] || echo "$VERIFY_OUTPUT" | grep -q "Overall Status: PASSED"; then
         jq --arg t "$ticket" '.tickets[$t].devstack_verification_result = "passed"' \
             "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
         advance_ticket "$ticket" "VERIFIED"

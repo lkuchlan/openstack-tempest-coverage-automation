@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Configuration for Tempest Coverage Skill",
+  "_setup_guide": "New users: edit user-config.json (repo paths, Jira URL, base branch) then copy your values here. reference-data.json contains stable OpenStack conventions — do not edit unless conventions change. This file (config.json) is what skills read at runtime.",
 
   "default_repo_paths": {
     "description": "CUSTOMIZE: Update these paths to your Tempest repositories location",
